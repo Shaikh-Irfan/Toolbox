@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cover Letter Generator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../resume.html">← Resume & Career</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../resume.html">Resume & Career</a><span>/</span><span>Cover Letter Generator</span></div>
+  <h1 class="page-title">Cover Letter Generator</h1>
+  <p class="page-desc">Fill in the details below and get a professional, personalised cover letter in seconds. Edit it freely before copying.</p>
+</div>
+<div class="tool-workspace">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+    <div class="option-group">
+      <div class="option-label">Your Full Name *</div>
+      <input type="text" class="option-input" id="yourName" placeholder="Rajesh Kumar" style="width:100%" oninput="generate()">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Your Email *</div>
+      <input type="text" class="option-input" id="yourEmail" placeholder="rajesh@email.com" style="width:100%" oninput="generate()">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Hiring Manager Name</div>
+      <input type="text" class="option-input" id="hiringMgr" placeholder="Priya Sharma (or leave blank)" style="width:100%" oninput="generate()">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Company Name *</div>
+      <input type="text" class="option-input" id="company" placeholder="Google India" style="width:100%" oninput="generate()">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Role / Position *</div>
+      <input type="text" class="option-input" id="role" placeholder="Software Engineer" style="width:100%" oninput="generate()">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Years of Experience</div>
+      <input type="text" class="option-input" id="experience" placeholder="3 years" style="width:100%" oninput="generate()">
+    </div>
+  </div>
+  <div class="option-group" style="margin-bottom:1rem">
+    <div class="option-label">Your Key Skills (comma-separated)</div>
+    <input type="text" class="option-input" id="skills" placeholder="Python, React, SQL, team leadership" style="width:100%" oninput="generate()">
+  </div>
+  <div class="option-group" style="margin-bottom:1rem">
+    <div class="option-label">Your Top Achievement</div>
+    <input type="text" class="option-input" id="achievement" placeholder="Reduced system latency by 40% at my previous role" style="width:100%" oninput="generate()">
+  </div>
+  <div class="options-row" style="margin-bottom:1.5rem">
+    <div class="option-group">
+      <div class="option-label">Tone</div>
+      <select class="option-select" id="tone" onchange="generate()">
+        <option value="professional">Professional & Formal</option>
+        <option value="confident">Confident & Direct</option>
+        <option value="enthusiastic">Enthusiastic & Warm</option>
+      </select>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem">
+    <div class="option-label">Generated Cover Letter — edit freely</div>
+    <div style="display:flex;gap:0.5rem">
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.7rem;font-family:var(--sans)" onclick="copyLetter()">📋 Copy</button>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.7rem;font-family:var(--sans)" onclick="printLetter()">🖨 Print</button>
+    </div>
+  </div>
+  <textarea class="textarea-tool" id="letterOutput" style="min-height:420px;font-size:0.88rem;line-height:1.8"></textarea>
+  <div class="status-msg" id="status"></div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function generate(){
+  const name = document.getElementById('yourName').value.trim() || '[Your Name]';
+  const email = document.getElementById('yourEmail').value.trim() || '[Your Email]';
+  const mgr = document.getElementById('hiringMgr').value.trim();
+  const company = document.getElementById('company').value.trim() || '[Company Name]';
+  const role = document.getElementById('role').value.trim() || '[Role]';
+  const exp = document.getElementById('experience').value.trim() || 'several years';
+  const skills = document.getElementById('skills').value.trim() || 'relevant skills';
+  const achievement = document.getElementById('achievement').value.trim();
+  const tone = document.getElementById('tone').value;
+  const today = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+  const greeting = mgr ? `Dear ${mgr},` : 'Dear Hiring Manager,';
+
+  let opening, body2, closing;
+  if(tone==='professional'){
+    opening = `I am writing to express my interest in the ${role} position at ${company}. With ${exp} of experience and a strong background in ${skills}, I am confident in my ability to make a meaningful contribution to your team.`;
+    body2 = achievement ? `In my previous role, ${achievement}. This experience has equipped me with the practical skills and problem-solving mindset needed to deliver results at ${company}.` : `Throughout my career, I have developed deep expertise in ${skills}, consistently delivering high-quality results and contributing to team success.`;
+    closing = `I would welcome the opportunity to discuss how my background aligns with your goals. Thank you for considering my application. I look forward to speaking with you.`;
+  } else if(tone==='confident'){
+    opening = `I am applying for the ${role} role at ${company} — and I am certain I can deliver immediate value. With ${exp} of hands-on experience in ${skills}, I bring exactly the capabilities you are looking for.`;
+    body2 = achievement ? `My track record speaks clearly: ${achievement}. I drive results, not just activity.` : `My expertise in ${skills} has consistently led to measurable outcomes. I take ownership, move fast, and deliver.`;
+    closing = `I would like to schedule a conversation at your earliest convenience. Thank you for your time — I look forward to showing you what I can bring to ${company}.`;
+  } else {
+    opening = `I was thrilled to discover the ${role} opening at ${company}! With ${exp} of experience and genuine passion for ${skills}, this role feels like a perfect match for where I am in my career.`;
+    body2 = achievement ? `One of my proudest moments was when ${achievement} — it reminded me why I love this work and how much impact the right team can have.` : `I genuinely enjoy working with ${skills} and thrive in collaborative environments where ideas are valued and impact is tangible.`;
+    closing = `I would love to connect and share more about my journey. Thank you so much for considering my application — I am excited about the possibility of joining the ${company} team!`;
+  }
+
+  const letter = `${today}
+
+${name}
+${email}
+
+${greeting}
+
+${opening}
+
+${body2}
+
+I am particularly drawn to ${company} because of its reputation for innovation and impact. I am eager to bring my experience in ${skills} to a team where I can both contribute and continue to grow.
+
+${closing}
+
+Warm regards,
+${name}`;
+
+  document.getElementById('letterOutput').value = letter;
+}
+
+async function copyLetter(){
+  const text = document.getElementById('letterOutput').value;
+  if(!text){ setStatus('Nothing to copy.','error'); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus('Cover letter copied to clipboard!','success');
+  } catch(e){
+    document.getElementById('letterOutput').select();
+    setStatus('Text selected — press Ctrl+C to copy.','');
+  }
+  setTimeout(()=>setStatus(''),2500);
+}
+
+function printLetter(){
+  const text = document.getElementById('letterOutput').value;
+  if(!text){ setStatus('Nothing to print.','error'); return; }
+  const html = `<!DOCTYPE html><html><head><style>body{font-family:Georgia,serif;font-size:12pt;line-height:1.8;margin:1in;color:#111}p{margin-bottom:1em}</style></head><body>${text.replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>').replace(/^/,'<p>').replace(/$/,'</p>')}</body></html>`;
+  const win = window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(()=>win.print(),400);
+}
+
+function setStatus(msg,type){ const s=document.getElementById('status'); s.textContent=msg; s.className='status-msg'+(type?' '+type:''); }
+generate();
+</script>
+</body></html>

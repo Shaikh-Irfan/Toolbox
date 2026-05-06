@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Passport Photo Maker — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+#cropWrap{position:relative;display:inline-block;cursor:crosshair;user-select:none}
+#cropOverlay{position:absolute;top:0;left:0;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 0 9999px rgba(0,0,0,0.55);box-sizing:border-box;cursor:move}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../image-tools.html">← Image & Design</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../image-tools.html">Image & Design</a><span>/</span><span>Passport Photo Maker</span></div>
+  <h1 class="page-title">Passport Photo Maker</h1>
+  <p class="page-desc">Drag to position the crop box, then generate a passport-size photo with white background. Standard 35×45mm.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept="image/*">
+    <div class="drop-icon">🪪</div>
+    <div class="drop-title">Drop your photo here</div>
+    <div class="drop-sub">Use a clear front-facing photo for best results</div>
+  </div>
+  <div id="controls" style="display:none">
+    <div class="options-row" style="margin-bottom:1rem;flex-wrap:wrap">
+      <div class="option-group">
+        <div class="option-label">Passport standard</div>
+        <select class="option-select" id="standard" onchange="updateCropRatio()">
+          <option value="35x45">India / UK — 35×45mm</option>
+          <option value="51x51">USA — 2×2 inch (51×51mm)</option>
+          <option value="35x35">Schengen — 35×35mm</option>
+          <option value="40x60">China — 33×48mm</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <div class="option-label">Output DPI</div>
+        <select class="option-select" id="outDPI">
+          <option value="300" selected>300 DPI (print quality)</option>
+          <option value="600">600 DPI (high quality)</option>
+        </select>
+      </div>
+    </div>
+    <div id="cropWrap">
+      <img id="srcImg" style="max-width:100%;max-height:400px;display:block">
+      <div id="cropOverlay"></div>
+    </div>
+    <p style="font-size:0.72rem;color:var(--muted);margin:0.6rem 0 1.25rem">Drag the crop box to position your face. Resize by dragging corners.</p>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="generatePassport()">Generate Passport Photo</button>
+      <button class="btn-secondary" onclick="reset()">Choose another</button>
+    </div>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div id="resultArea" style="display:none;margin-top:1.5rem">
+    <div class="option-label" style="margin-bottom:0.75rem">Passport photo (white background)</div>
+    <img id="resultImg" style="max-width:200px;border-radius:3px;border:0.5px solid rgba(255,255,255,0.2);margin-bottom:1rem">
+    <div class="status-msg" id="resultInfo"></div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-primary" id="dlBtn">⬇ Download Passport Photo</button>
+      <button class="btn-secondary" onclick="document.getElementById('resultArea').style.display='none'">Adjust crop</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+let origImg=null, origFile=null;
+let cropX=0,cropY=0,cropW=100,cropH=130;
+let dragging=false,resizing=false,dragOff={x:0,y:0};
+let displayW=0,displayH=0,naturalW=0,naturalH=0;
+const STANDARDS={'35x45':{w:35,h:45},'51x51':{w:51,h:51},'35x35':{w:35,h:35},'40x60':{w:33,h:48}};
+
+function downloadBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),15000);}
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(2)+' MB';}
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+async function handleFile(f){
+  if(!f||!f.type.startsWith('image/')){setStatus('Please upload an image','error');return;}
+  origFile=f;
+  const url=URL.createObjectURL(f);
+  const imgEl=document.getElementById('srcImg');
+  imgEl.onload=()=>{
+    URL.revokeObjectURL(url);
+    origImg=imgEl;
+    naturalW=imgEl.naturalWidth;naturalH=imgEl.naturalHeight;
+    displayW=imgEl.offsetWidth;displayH=imgEl.offsetHeight;
+    updateCropRatio();
+    document.getElementById('controls').style.display='block';
+    dz.style.display='none';
+    setupCropDrag();
+  };
+  imgEl.src=url;
+}
+
+function updateCropRatio(){
+  if(!origImg)return;
+  displayW=document.getElementById('srcImg').offsetWidth||displayW;
+  displayH=document.getElementById('srcImg').offsetHeight||displayH;
+  const std=STANDARDS[document.getElementById('standard').value];
+  const ratio=std.w/std.h;
+  cropW=Math.round(displayW*0.5);
+  cropH=Math.round(cropW/ratio);
+  cropX=Math.round((displayW-cropW)/2);
+  cropY=Math.round((displayH-cropH)/2);
+  renderCrop();
+}
+
+function renderCrop(){
+  const ov=document.getElementById('cropOverlay');
+  ov.style.left=cropX+'px';ov.style.top=cropY+'px';
+  ov.style.width=cropW+'px';ov.style.height=cropH+'px';
+}
+
+function setupCropDrag(){
+  const wrap=document.getElementById('cropWrap');
+  const ov=document.getElementById('cropOverlay');
+  ov.addEventListener('mousedown',e=>{
+    e.preventDefault();
+    dragging=true;
+    dragOff.x=e.clientX-cropX;dragOff.y=e.clientY-cropY;
+  });
+  wrap.addEventListener('mousemove',e=>{
+    if(!dragging)return;
+    cropX=Math.max(0,Math.min(displayW-cropW,e.clientX-dragOff.x));
+    cropY=Math.max(0,Math.min(displayH-cropH,e.clientY-dragOff.y));
+    renderCrop();
+  });
+  wrap.addEventListener('mouseup',()=>{dragging=false;});
+  // Touch support
+  ov.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    const t=e.touches[0];
+    dragging=true;dragOff.x=t.clientX-cropX;dragOff.y=t.clientY-cropY;
+  },{passive:false});
+  wrap.addEventListener('touchmove',e=>{
+    if(!dragging)return;e.preventDefault();
+    const t=e.touches[0];
+    cropX=Math.max(0,Math.min(displayW-cropW,t.clientX-dragOff.x));
+    cropY=Math.max(0,Math.min(displayH-cropH,t.clientY-dragOff.y));
+    renderCrop();
+  },{passive:false});
+  wrap.addEventListener('touchend',()=>{dragging=false;});
+}
+
+function generatePassport(){
+  if(!origImg)return;
+  const std=STANDARDS[document.getElementById('standard').value];
+  const dpi=parseInt(document.getElementById('outDPI').value);
+  const outW=Math.round(std.w/25.4*dpi);
+  const outH=Math.round(std.h/25.4*dpi);
+  // Map display crop coords to natural image coords
+  const scaleX=naturalW/displayW;
+  const scaleY=naturalH/displayH;
+  const sx=Math.round(cropX*scaleX);
+  const sy=Math.round(cropY*scaleY);
+  const sw=Math.round(cropW*scaleX);
+  const sh=Math.round(cropH*scaleY);
+  const canvas=document.createElement('canvas');
+  canvas.width=outW;canvas.height=outH;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,outW,outH);
+  ctx.drawImage(origImg,sx,sy,sw,sh,0,0,outW,outH);
+  canvas.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    document.getElementById('resultImg').src=url;
+    document.getElementById('resultInfo').textContent=`${outW}×${outH}px · ${formatSize(blob.size)} · ${std.w}×${std.h}mm at ${dpi}DPI`;
+    document.getElementById('dlBtn').onclick=()=>downloadBlob(blob,'passport-photo.jpg');
+    document.getElementById('resultArea').style.display='block';
+    setStatus('Done!','success');
+  },'image/jpeg',0.95);
+}
+
+function reset(){
+  origImg=null;origFile=null;
+  document.getElementById('fileInput').value='';
+  document.getElementById('controls').style.display='none';
+  document.getElementById('resultArea').style.display='none';
+  dz.style.display='block';
+  setStatus('');
+}
+</script>
+</body></html>

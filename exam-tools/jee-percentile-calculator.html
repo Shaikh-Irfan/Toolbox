@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JEE Percentile Calculator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.rcard{padding:1.1rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px}
+.rcard-label{font-size:0.62rem;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted);margin-bottom:0.3rem}
+.rcard-val{font-family:var(--serif);font-size:1.4rem;color:var(--text)}
+.result-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:0.75rem;margin-top:1.5rem}
+.disclaimer{font-size:0.72rem;color:var(--muted);margin-top:1.25rem;padding:0.85rem 1rem;background:rgba(255,200,80,0.05);border:0.5px solid rgba(255,200,80,0.15);border-radius:4px;line-height:1.6}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../exam-tools.html">← Exam Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../exam-tools.html">Exam Tools</a><span>/</span><span>JEE Percentile Calculator</span></div>
+  <h1 class="page-title">JEE Percentile Calculator</h1>
+  <p class="page-desc">Estimate your JEE Mains percentile and rank from your marks. Includes subject-wise percentile breakdown.</p>
+</div>
+<div class="tool-workspace" style="max-width:600px">
+  <div class="options-row" style="flex-wrap:wrap;margin-bottom:0.5rem">
+    <div class="option-group">
+      <div class="option-label">Exam</div>
+      <select class="option-select" id="examType" onchange="calc()">
+        <option value="mains">JEE Mains</option>
+        <option value="advanced">JEE Advanced (approximate)</option>
+      </select>
+    </div>
+    <div class="option-group">
+      <div class="option-label">Session / Attempt</div>
+      <select class="option-select" id="session" onchange="calc()">
+        <option value="1">Session 1</option>
+        <option value="2">Session 2</option>
+      </select>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:1.25rem">
+    <div class="option-group">
+      <div class="option-label">Physics</div>
+      <input type="number" class="option-input" id="physics" value="60" min="-30" max="100" oninput="calcTotal()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Chemistry</div>
+      <input type="number" class="option-input" id="chemistry" value="65" min="-30" max="100" oninput="calcTotal()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Maths</div>
+      <input type="number" class="option-input" id="maths" value="70" min="-30" max="100" oninput="calcTotal()" style="width:100%">
+    </div>
+  </div>
+  <div class="option-group" style="margin-bottom:1.25rem">
+    <div class="option-label">Total Score (auto-calculated, max 300)</div>
+    <input type="number" class="option-input" id="totalScore" value="195" min="-90" max="300" oninput="calc()" style="width:100%">
+  </div>
+  <div class="result-grid" id="resultGrid"></div>
+  <div class="disclaimer">⚠️ Percentile is estimated from historical JEE Mains data (~10–12 lakh candidates). Actual percentile may vary based on exam difficulty, candidate count and NTA's normalization formula.</div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+// Score → percentile mapping based on JEE Mains historical data
+const MAINS_MAP = [
+  {score:300,pct:99.99},{score:280,pct:99.97},{score:260,pct:99.90},{score:240,pct:99.75},
+  {score:220,pct:99.50},{score:200,pct:99.10},{score:180,pct:98.50},{score:160,pct:97.50},
+  {score:140,pct:96.00},{score:120,pct:93.50},{score:100,pct:90.00},{score:80,pct:84.00},
+  {score:60,pct:75.00},{score:40,pct:63.00},{score:20,pct:50.00},{score:0,pct:35.00},
+  {score:-10,pct:20.00},{score:-30,pct:10.00},{score:-90,pct:1.00}
+];
+
+function interpolate(score, map){
+  score = Math.max(map[map.length-1].score, Math.min(map[0].score, score));
+  for(let i=0;i<map.length-1;i++){
+    const hi=map[i], lo=map[i+1];
+    if(score<=hi.score && score>=lo.score){
+      const t=(hi.score-score)/(hi.score-lo.score);
+      return hi.pct - t*(hi.pct-lo.pct);
+    }
+  }
+  return map[map.length-1].pct;
+}
+
+function pctToRank(pct){ return Math.round((100-pct)/100*1100000); }
+
+function calcTotal(){
+  const p=parseInt(document.getElementById('physics').value)||0;
+  const c=parseInt(document.getElementById('chemistry').value)||0;
+  const m=parseInt(document.getElementById('maths').value)||0;
+  document.getElementById('totalScore').value = p+c+m;
+  calc();
+}
+
+function calc(){
+  const total = parseInt(document.getElementById('totalScore').value)||0;
+  const p = parseInt(document.getElementById('physics').value)||0;
+  const c = parseInt(document.getElementById('chemistry').value)||0;
+  const m = parseInt(document.getElementById('maths').value)||0;
+  const pct = interpolate(total, MAINS_MAP);
+  const rank = pctToRank(pct);
+  const ppct = interpolate(p, MAINS_MAP.map(x=>({score:x.score/3,pct:x.pct})));
+  const cpct = interpolate(c, MAINS_MAP.map(x=>({score:x.score/3,pct:x.pct})));
+  const mpct = interpolate(m, MAINS_MAP.map(x=>({score:x.score/3,pct:x.pct})));
+
+  let outlook = '';
+  if(pct>=99.5) outlook='IIT top branches (CSE, EE) possible';
+  else if(pct>=99) outlook='IIT admission likely (good branches)';
+  else if(pct>=97) outlook='NIT top branches (general category)';
+  else if(pct>=93) outlook='NIT admission possible';
+  else if(pct>=85) outlook='IIIT / good state colleges';
+  else if(pct>=75) outlook='State NIT / IIIT possible';
+  else outlook='State engineering colleges';
+
+  document.getElementById('resultGrid').innerHTML=`
+    <div class="rcard"><div class="rcard-label">Total Score</div><div class="rcard-val">${total} / 300</div></div>
+    <div class="rcard"><div class="rcard-label">Estimated Percentile</div><div class="rcard-val" style="color:#6bffb8">${pct.toFixed(2)}</div></div>
+    <div class="rcard"><div class="rcard-label">Estimated Rank</div><div class="rcard-val">${rank.toLocaleString('en-IN')}</div></div>
+    <div class="rcard"><div class="rcard-label">Physics Percentile</div><div class="rcard-val">${ppct.toFixed(1)}</div></div>
+    <div class="rcard"><div class="rcard-label">Chemistry Percentile</div><div class="rcard-val">${cpct.toFixed(1)}</div></div>
+    <div class="rcard"><div class="rcard-label">Maths Percentile</div><div class="rcard-val">${mpct.toFixed(1)}</div></div>
+    <div class="rcard" style="grid-column:1/-1"><div class="rcard-label">Admission Outlook</div><div class="rcard-val" style="font-size:1rem">${outlook}</div></div>`;
+}
+calc();
+</script>
+</body></html>

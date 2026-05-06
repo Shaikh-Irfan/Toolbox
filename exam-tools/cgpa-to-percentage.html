@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CGPA to Percentage — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.univ-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.5rem;margin-bottom:1.5rem}
+.univ-btn{padding:0.6rem 0.85rem;background:var(--card-bg);border:0.5px solid var(--card-border);color:var(--muted);border-radius:3px;cursor:pointer;font-size:0.75rem;font-family:var(--sans);text-align:left;transition:all 0.2s}
+.univ-btn:hover,.univ-btn.active{border-color:rgba(255,255,255,0.2);color:var(--text);background:rgba(255,255,255,0.05)}
+.univ-btn .formula{font-size:0.65rem;color:var(--muted);margin-top:0.2rem;font-family:monospace}
+.big-result{font-family:var(--serif);font-size:3.5rem;color:#6bffb8;margin:1.5rem 0 0.5rem}
+.result-sub{font-size:0.82rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../exam-tools.html">← Exam Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../exam-tools.html">Exam Tools</a><span>/</span><span>CGPA to Percentage</span></div>
+  <h1 class="page-title">CGPA to Percentage</h1>
+  <p class="page-desc">Convert your CGPA to percentage using the official formula for your university. Supports all major Indian universities.</p>
+</div>
+<div class="tool-workspace">
+  <div class="option-label" style="margin-bottom:0.75rem">Select your university / formula</div>
+  <div class="univ-grid" id="univGrid"></div>
+  <div style="display:flex;flex-direction:column;gap:1.25rem;max-width:400px">
+    <div class="option-group">
+      <div class="option-label">Your CGPA</div>
+      <input type="number" class="option-input" id="cgpaInput" value="8.5" min="0" max="10" step="0.01" oninput="calc()" style="width:100%">
+    </div>
+    <div id="customFormulaGroup" style="display:none">
+      <div class="option-group">
+        <div class="option-label">Multiplier (your university's formula)</div>
+        <input type="number" class="option-input" id="customMultiplier" value="9.5" step="0.01" oninput="calc()" style="width:100%">
+      </div>
+    </div>
+  </div>
+  <div class="big-result" id="result">—</div>
+  <div class="result-sub" id="resultSub"></div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+const UNIVERSITIES = [
+  {name:'VTU / Anna University',formula:'CGPA × 10',fn:c=>c*10},
+  {name:'Mumbai University',formula:'(CGPA − 0.5) × 10',fn:c=>(c-0.5)*10},
+  {name:'CBSE (10-point scale)',formula:'CGPA × 9.5',fn:c=>c*9.5},
+  {name:'Pune University',formula:'CGPA × 10',fn:c=>c*10},
+  {name:'Delhi University',formula:'CGPA × 9.5',fn:c=>c*9.5},
+  {name:'JNTU',formula:'(CGPA − 0.75) × 10',fn:c=>(c-0.75)*10},
+  {name:'Osmania University',formula:'(CGPA / 10) × 100',fn:c=>(c/10)*100},
+  {name:'IP University',formula:'CGPA × 10',fn:c=>c*10},
+  {name:'Calicut University',formula:'(CGPA − 0.5) × 10',fn:c=>(c-0.5)*10},
+  {name:'Custom multiplier',formula:'CGPA × ?',fn:null,custom:true}
+];
+let selectedIdx = 0;
+
+function renderGrid(){
+  const grid = document.getElementById('univGrid');
+  grid.innerHTML = UNIVERSITIES.map((u,i) =>
+    `<button class="univ-btn${i===0?' active':''}" onclick="selectUniv(${i})">
+      <div>${u.name}</div>
+      <div class="formula">${u.formula}</div>
+    </button>`
+  ).join('');
+}
+
+function selectUniv(i){
+  selectedIdx = i;
+  document.querySelectorAll('.univ-btn').forEach((b,j) => b.classList.toggle('active', j===i));
+  document.getElementById('customFormulaGroup').style.display = UNIVERSITIES[i].custom ? 'block' : 'none';
+  calc();
+}
+
+function calc(){
+  const cgpa = parseFloat(document.getElementById('cgpaInput').value);
+  if(isNaN(cgpa) || cgpa < 0 || cgpa > 10){ document.getElementById('result').textContent = '—'; document.getElementById('resultSub').textContent = 'Please enter a CGPA between 0 and 10'; return; }
+  const u = UNIVERSITIES[selectedIdx];
+  let pct;
+  if(u.custom){
+    const mult = parseFloat(document.getElementById('customMultiplier').value) || 9.5;
+    pct = cgpa * mult;
+  } else {
+    pct = u.fn(cgpa);
+  }
+  pct = Math.min(100, Math.max(0, pct));
+  document.getElementById('result').textContent = pct.toFixed(2) + '%';
+  document.getElementById('resultSub').textContent = `${cgpa} CGPA → ${pct.toFixed(2)}% using formula: ${u.formula}`;
+}
+
+renderGrid();
+calc();
+</script>
+</body></html>

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organise PDF — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.pages-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(90px,1fr)); gap:0.75rem; margin-bottom:1.25rem; }
+.page-thumb { background:var(--card-bg); border:0.5px solid var(--card-border); border-radius:4px; padding:0.6rem; text-align:center; cursor:grab; transition:border-color 0.2s,transform 0.2s; position:relative; user-select:none; }
+.page-thumb.dragging { opacity:0.4; transform:scale(0.95); }
+.page-thumb.drag-over { border-color:rgba(255,255,255,0.5); }
+.page-thumb canvas { width:100%; border-radius:2px; }
+.page-num { font-size:0.65rem; color:var(--muted); margin-top:0.4rem; letter-spacing:0.05em; }
+.page-del { position:absolute; top:3px; right:3px; background:rgba(255,80,80,0.7); border:none; color:#fff; border-radius:50%; width:18px; height:18px; cursor:pointer; font-size:0.7rem; line-height:18px; display:none; padding:0; }
+.page-thumb:hover .page-del { display:block; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../file-converter.html">← File Converter</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../file-converter.html">File Converter</a><span>/</span><span>Organise PDF</span></div>
+  <h1 class="page-title">Organise PDF</h1>
+  <p class="page-desc">Drag to reorder pages or click the × to delete them. Then download your reorganised PDF.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept=".pdf">
+    <div class="drop-icon">📋</div>
+    <div class="drop-title">Drop your PDF here</div>
+    <div class="drop-sub">or click to browse</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">📑</div>
+    <div class="file-info-text"><div class="file-info-name" id="fname"></div><div class="file-info-size" id="fsize"></div></div>
+    <button class="file-remove" onclick="resetFile()">✕</button>
+  </div>
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="status-msg" id="status"></div>
+  <div class="pages-grid" id="pagesGrid"></div>
+  <div class="btn-row" id="actionRow" style="display:none">
+    <button class="btn-primary" onclick="savePdf()">⬇ Save Reorganised PDF</button>
+    <button class="btn-secondary" onclick="resetFile()">Start over</button>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let currentFile=null, pageOrder=[], srcPdfBytes=null;
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+async function handleFile(f) {
+  if(!f||!f.name.match(/\.pdf$/i)){setStatus('Please upload a PDF','error');return;}
+  currentFile=f;
+  document.getElementById('fname').textContent=f.name;
+  document.getElementById('fsize').textContent=formatSize(f.size);
+  document.getElementById('fileInfo').style.display='flex';
+  dz.style.display='none';
+  const prog=document.getElementById('prog');const fill=document.getElementById('progFill');
+  prog.classList.add('active');fill.style.width='10%';
+  setStatus('Loading pages...');
+  srcPdfBytes=await f.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:srcPdfBytes.slice()}).promise;
+  const total=pdf.numPages;
+  pageOrder=Array.from({length:total},(_,i)=>i);
+  const grid=document.getElementById('pagesGrid');
+  grid.innerHTML='';
+  for(let i=1;i<=total;i++){
+    fill.style.width=(10+(i/total)*80)+'%';
+    const page=await pdf.getPage(i);
+    const vp=page.getViewport({scale:0.3});
+    const canvas=document.createElement('canvas');
+    canvas.width=vp.width;canvas.height=vp.height;
+    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+    const thumb=document.createElement('div');
+    thumb.className='page-thumb';thumb.draggable=true;thumb.dataset.idx=i-1;thumb.dataset.orig=i-1;
+    thumb.innerHTML=`<button class="page-del" onclick="deletePage(${i-1})">×</button><div class="page-num">Page ${i}</div>`;
+    thumb.insertBefore(canvas,thumb.firstChild);
+    thumb.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',thumb.dataset.idx);thumb.classList.add('dragging');});
+    thumb.addEventListener('dragend',()=>thumb.classList.remove('dragging'));
+    thumb.addEventListener('dragover',e=>{e.preventDefault();thumb.classList.add('drag-over');});
+    thumb.addEventListener('dragleave',()=>thumb.classList.remove('drag-over'));
+    thumb.addEventListener('drop',e=>{
+      e.preventDefault();thumb.classList.remove('drag-over');
+      const from=parseInt(e.dataTransfer.getData('text/plain'));
+      const to=parseInt(thumb.dataset.idx);
+      if(from===to)return;
+      const el=grid.children[from];
+      if(from<to)grid.insertBefore(el,grid.children[to].nextSibling);
+      else grid.insertBefore(el,grid.children[to]);
+      updateOrder();
+    });
+    grid.appendChild(thumb);
+  }
+  fill.style.width='100%';
+  setTimeout(()=>prog.classList.remove('active'),400);
+  document.getElementById('actionRow').style.display='flex';
+  setStatus(`${total} pages loaded. Drag to reorder, × to delete.`,'success');
+}
+
+function updateOrder() {
+  const grid=document.getElementById('pagesGrid');
+  // Only update position index for drag tracking; data-orig stays as original page index
+  [...grid.children].forEach((el, i) => { el.dataset.idx = i; });
+}
+
+function deletePage(posIdx) {
+  const grid=document.getElementById('pagesGrid');
+  // Find the child whose current position index matches
+  const el = [...grid.children].find(c => parseInt(c.dataset.idx) === posIdx);
+  if (el) el.remove();
+  updateOrder();
+}
+
+function resetFile() {
+  currentFile=null;pageOrder=[];srcPdfBytes=null;
+  document.getElementById('fileInput').value='';
+  document.getElementById('fileInfo').style.display='none';
+  document.getElementById('pagesGrid').innerHTML='';
+  document.getElementById('actionRow').style.display='none';
+  dz.style.display='block';
+  setStatus('');
+}
+
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+async function savePdf() {
+  const grid=document.getElementById('pagesGrid');
+  // data-orig = original page index in source PDF (never changes during reorder/delete)
+  const order=[...grid.children].map(el=>parseInt(el.dataset.orig));
+  if(!order.length){setStatus('No pages remaining','error');return;}
+  setStatus('Saving...');
+  try {
+    const src=await PDFLib.PDFDocument.load(srcPdfBytes);
+    const out=await PDFLib.PDFDocument.create();
+    const pages=await out.copyPages(src,order);
+    pages.forEach(p=>out.addPage(p));
+    const bytes=await out.save();
+    const blob=new Blob([bytes],{type:'application/pdf'});
+    const name=currentFile.name.replace(/\.pdf$/i,'-organised.pdf');
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setStatus('Downloaded!','success');
+  } catch(e){setStatus('Failed: '+e.message,'error');}
+}
+</script>
+</body></html>

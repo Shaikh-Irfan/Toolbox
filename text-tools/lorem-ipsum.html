@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lorem Ipsum Generator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../text-tools.html">← Text Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../text-tools.html">Text Tools</a><span>/</span><span>Lorem Ipsum Generator</span></div>
+  <h1 class="page-title">Lorem Ipsum Generator</h1>
+  <p class="page-desc">Generate placeholder text in paragraphs, sentences or words. Start with classic Lorem Ipsum or random Latin.</p>
+</div>
+<div class="tool-workspace">
+  <div class="options-row" style="flex-wrap:wrap">
+    <div class="option-group">
+      <div class="option-label">Type</div>
+      <select class="option-select" id="genType">
+        <option value="paragraphs">Paragraphs</option>
+        <option value="sentences">Sentences</option>
+        <option value="words">Words</option>
+      </select>
+    </div>
+    <div class="option-group">
+      <div class="option-label">Count</div>
+      <input type="number" class="option-input" id="count" value="3" min="1" max="100" style="min-width:80px">
+    </div>
+    <div class="option-group" style="justify-content:flex-end;padding-top:1.4rem">
+      <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;color:var(--muted);cursor:pointer">
+        <input type="checkbox" id="startClassic" checked> Start with "Lorem ipsum..."
+      </label>
+    </div>
+  </div>
+  <div class="btn-row" style="margin-top:0">
+    <button class="btn-primary" onclick="generate()">Generate Text</button>
+  </div>
+  <div id="outputArea" style="display:none;margin-top:1.5rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+      <div class="option-label" id="outputLabel">Generated text</div>
+      <button class="btn-secondary" style="padding:0.4rem 0.85rem;font-size:0.7rem" onclick="copyOutput()">📋 Copy</button>
+    </div>
+    <textarea class="textarea-tool" id="output" style="min-height:260px" readonly></textarea>
+    <div class="status-msg" id="status"></div>
+  </div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+const WORDS = ['lorem','ipsum','dolor','sit','amet','consectetur','adipiscing','elit','sed','do','eiusmod','tempor','incididunt','ut','labore','et','dolore','magna','aliqua','enim','ad','minim','veniam','quis','nostrud','exercitation','ullamco','laboris','nisi','aliquip','ex','ea','commodo','consequat','duis','aute','irure','in','reprehenderit','voluptate','velit','esse','cillum','eu','fugiat','nulla','pariatur','excepteur','sint','occaecat','cupidatat','non','proident','sunt','culpa','qui','officia','deserunt','mollit','anim','id','est','laborum','curabitur','pretium','tincidunt','lacus','nunc','purus','semper','vitae','condimentum','turpis','facilisi','pellentesque','habitant','morbi','tristique','senectus','netus','malesuada','fames','ac','ante','ipsum','primis','faucibus'];
+
+const CLASSIC = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.';
+
+function randomWord(){ return WORDS[Math.floor(Math.random()*WORDS.length)]; }
+
+function makeSentence(startClassic, isFirst){
+  if(isFirst && startClassic) return CLASSIC;
+  const len = 8 + Math.floor(Math.random()*12);
+  let words = [];
+  for(let i=0;i<len;i++) words.push(randomWord());
+  words[0] = words[0].charAt(0).toUpperCase() + words[0].slice(1);
+  return words.join(' ') + '.';
+}
+
+function makeParagraph(classic, isFirst){
+  const sentCount = 3 + Math.floor(Math.random()*4);
+  let sents = [];
+  for(let i=0;i<sentCount;i++) sents.push(makeSentence(classic, isFirst && i===0));
+  return sents.join(' ');
+}
+
+function generate(){
+  const type = document.getElementById('genType').value;
+  const count = Math.min(100, Math.max(1, parseInt(document.getElementById('count').value)||3));
+  const classic = document.getElementById('startClassic').checked;
+  let output = '';
+  if(type === 'paragraphs'){
+    let paras = [];
+    for(let i=0;i<count;i++) paras.push(makeParagraph(classic, i===0));
+    output = paras.join('\n\n');
+    document.getElementById('outputLabel').textContent = `${count} paragraph${count>1?'s':''}`;
+  } else if(type === 'sentences'){
+    let sents = [];
+    for(let i=0;i<count;i++) sents.push(makeSentence(classic, i===0));
+    output = sents.join(' ');
+    document.getElementById('outputLabel').textContent = `${count} sentence${count>1?'s':''}`;
+  } else {
+    let words = [];
+    if(classic){ const cw = CLASSIC.replace(/[.,]/g,'').split(' '); words = cw.slice(0, Math.min(count, cw.length)); }
+    while(words.length < count) words.push(randomWord());
+    output = words.slice(0,count).join(' ');
+    document.getElementById('outputLabel').textContent = `${count} word${count>1?'s':''}`;
+  }
+  document.getElementById('output').value = output;
+  document.getElementById('outputArea').style.display = 'block';
+}
+
+async function copyOutput(){
+  const text = document.getElementById('output').value;
+  if(!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    document.getElementById('status').textContent = 'Copied!';
+    document.getElementById('status').className = 'status-msg success';
+  } catch(e) {
+    document.getElementById('output').select();
+    document.getElementById('status').textContent = 'Text selected — press Ctrl+C to copy.';
+    document.getElementById('status').className = 'status-msg';
+  }
+  setTimeout(() => document.getElementById('status').textContent = '', 2000);
+}
+
+generate();
+</script>
+</body></html>

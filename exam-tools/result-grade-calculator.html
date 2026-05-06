@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Result Grade Calculator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.grade-card{padding:2rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:6px;text-align:center;margin-top:1.5rem}
+.grade-letter{font-family:var(--serif);font-size:4rem;line-height:1;margin-bottom:0.5rem}
+.grade-name{font-size:1rem;color:var(--text);margin-bottom:0.3rem}
+.grade-div{font-size:0.78rem;color:var(--muted);margin-bottom:1.25rem}
+.grade-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem}
+.gs{padding:0.85rem;background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.06);border-radius:4px}
+.gs-label{font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.25rem}
+.gs-val{font-family:var(--serif);font-size:1.2rem;color:var(--text)}
+.subject-row{display:grid;grid-template-columns:1fr 75px 75px 32px;gap:0.4rem;align-items:center;margin-bottom:0.4rem}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0;transition:color 0.2s;text-align:center}
+.del-btn:hover{color:#ff7878}
+.rg-row-header{display:grid;grid-template-columns:1fr 75px 75px 32px;gap:0.4rem;margin-bottom:0.4rem}
+@media(max-width:480px){
+  .subject-row{grid-template-columns:1fr 60px 60px 28px;gap:0.25rem}
+  .rg-row-header{grid-template-columns:1fr 60px 60px 28px;gap:0.25rem}
+  .grade-stats{grid-template-columns:1fr 1fr 1fr;gap:0.4rem}
+  .gs{padding:0.6rem 0.5rem}
+  .gs-val{font-size:1rem}
+}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../exam-tools.html">← Exam Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../exam-tools.html">Exam Tools</a><span>/</span><span>Result Grade Calculator</span></div>
+  <h1 class="page-title">Result Grade Calculator</h1>
+  <p class="page-desc">Enter your marks to get your grade, division and distinction status. Supports both single-subject and multi-subject results.</p>
+</div>
+<div class="tool-workspace">
+  <div class="options-row" style="margin-bottom:1.25rem">
+    <div class="option-group">
+      <div class="option-label">Grading System</div>
+      <select class="option-select" id="gradeSys" onchange="calcGrade()">
+        <option value="india">Indian University (Pass@40%)</option>
+        <option value="cbse">CBSE (Pass@33%)</option>
+        <option value="us">US / International (A-F)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="rg-row-header">
+    <div class="option-label">Subject</div>
+    <div class="option-label">Obtained</div>
+    <div class="option-label">Max</div>
+    <div></div>
+  </div>
+  <div id="subjectRows"></div>
+  <button class="btn-secondary" style="margin-bottom:1.5rem" onclick="addSubject()">+ Add Subject</button>
+
+  <div id="gradeCard" style="display:none">
+    <div class="grade-card">
+      <div class="grade-letter" id="gradeLetter">A</div>
+      <div class="grade-name" id="gradeName">Distinction</div>
+      <div class="grade-div" id="gradeDivision">First Class with Distinction</div>
+      <div class="grade-stats">
+        <div class="gs"><div class="gs-label">Percentage</div><div class="gs-val" id="statPct">—</div></div>
+        <div class="gs"><div class="gs-label">Total Marks</div><div class="gs-val" id="statMarks">—</div></div>
+        <div class="gs"><div class="gs-label">Status</div><div class="gs-val" id="statStatus">—</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+let rowCount = 0;
+
+const GRADE_SYSTEMS = {
+  india: [
+    {min:90, letter:'O', name:'Outstanding', div:'First Class with Distinction', color:'#6bffb8'},
+    {min:75, letter:'A+', name:'Excellent', div:'First Class with Distinction', color:'#6bffb8'},
+    {min:60, letter:'A', name:'Very Good', div:'First Class', color:'#6bffb8'},
+    {min:50, letter:'B', name:'Good', div:'Second Class', color:'#ffc850'},
+    {min:40, letter:'C', name:'Pass', div:'Pass Class', color:'#ffc850'},
+    {min:0, letter:'F', name:'Fail', div:'Fail — Below passing marks', color:'#ff7878'}
+  ],
+  cbse: [
+    {min:91, letter:'A1', name:'Outstanding', div:'Distinction', color:'#6bffb8'},
+    {min:81, letter:'A2', name:'Excellent', div:'Distinction', color:'#6bffb8'},
+    {min:71, letter:'B1', name:'Very Good', div:'First Class', color:'#6bffb8'},
+    {min:61, letter:'B2', name:'Good', div:'First Class', color:'#ffc850'},
+    {min:51, letter:'C1', name:'Above Average', div:'Second Class', color:'#ffc850'},
+    {min:41, letter:'C2', name:'Average', div:'Second Class', color:'#ffc850'},
+    {min:33, letter:'D', name:'Pass', div:'Pass', color:'#ff9060'},
+    {min:0, letter:'E', name:'Fail', div:'Fail', color:'#ff7878'}
+  ],
+  us: [
+    {min:90, letter:'A', name:'Excellent', div:'4.0 GPA', color:'#6bffb8'},
+    {min:80, letter:'B', name:'Good', div:'3.0 GPA', color:'#6bffb8'},
+    {min:70, letter:'C', name:'Satisfactory', div:'2.0 GPA', color:'#ffc850'},
+    {min:60, letter:'D', name:'Passing', div:'1.0 GPA', color:'#ffc850'},
+    {min:0, letter:'F', name:'Failing', div:'0.0 GPA', color:'#ff7878'}
+  ]
+};
+
+function addSubject(name='', obtained='', max='100'){
+  rowCount++;
+  const id = rowCount;
+  const row = document.createElement('div');
+  row.className = 'subject-row';
+  row.id = 'srow-'+id;
+  row.innerHTML = `
+    <input type="text" class="option-input" value="${name}" placeholder="Subject ${id}" oninput="calcGrade()">
+    <input type="number" class="option-input" value="${obtained}" placeholder="0" min="0" oninput="calcGrade()" style="width:100%">
+    <input type="number" class="option-input" value="${max}" placeholder="100" min="1" oninput="calcGrade()" style="width:100%">
+    <button class="del-btn" onclick="removeSubject(${id})">✕</button>`;
+  document.getElementById('subjectRows').appendChild(row);
+  calcGrade();
+}
+
+function removeSubject(id){
+  const el = document.getElementById('srow-'+id);
+  if(el){ el.remove(); calcGrade(); }
+}
+
+function calcGrade(){
+  const rows = document.querySelectorAll('.subject-row');
+  let totalObt = 0, totalMax = 0, valid = 0;
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input[type="number"]');
+    const obt = parseFloat(inputs[0].value);
+    const max = parseFloat(inputs[1].value)||0;
+    if(!isNaN(obt) && max > 0){ totalObt += obt; totalMax += max; valid++; }
+  });
+
+  if(valid === 0 || totalMax === 0){
+    document.getElementById('gradeCard').style.display = 'none';
+    return;
+  }
+
+  const pct = Math.min(100, (totalObt/totalMax)*100);
+  const sys = document.getElementById('gradeSys').value;
+  const grades = GRADE_SYSTEMS[sys];
+  const grade = grades.find(g => pct >= g.min) || grades[grades.length-1];
+
+  document.getElementById('gradeLetter').textContent = grade.letter;
+  document.getElementById('gradeLetter').style.color = grade.color;
+  document.getElementById('gradeName').textContent = grade.name;
+  document.getElementById('gradeDivision').textContent = grade.div;
+  document.getElementById('statPct').textContent = pct.toFixed(2)+'%';
+  document.getElementById('statPct').style.color = grade.color;
+  document.getElementById('statMarks').textContent = `${Math.round(totalObt)} / ${Math.round(totalMax)}`;
+  document.getElementById('statStatus').textContent = grade.letter==='F'||grade.letter==='E' ? '❌ Fail' : '✅ Pass';
+  document.getElementById('statStatus').style.color = grade.letter==='F'||grade.letter==='E' ? '#ff7878' : '#6bffb8';
+  document.getElementById('gradeCard').style.display = 'block';
+}
+
+// Default subjects
+['English','Mathematics','Science','Social Studies','Hindi'].forEach((s,i) =>
+  addSubject(s, ['72','85','78','68','80'][i], '100'));
+</script>
+</body></html>

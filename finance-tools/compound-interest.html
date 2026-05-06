@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compound Interest Calculator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.result-card{padding:1.25rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px}
+.rc-label{font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem}
+.rc-value{font-family:var(--serif);font-size:1.5rem;color:var(--text)}
+.results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.75rem;margin-top:1.5rem}
+.yr-table{width:100%;border-collapse:collapse;font-size:0.75rem;margin-top:1rem}
+.yr-table th{color:var(--muted);font-weight:400;padding:0.45rem 0.6rem;border-bottom:0.5px solid var(--line);text-align:left;text-transform:uppercase;letter-spacing:0.05em}
+.yr-table td{padding:0.42rem 0.6rem;border-bottom:0.5px solid rgba(255,255,255,0.04);color:var(--muted)}
+.yr-table tr:hover td{color:var(--text)}
+.rc-label { font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:0.4rem; }
+.rc-value { font-family:var(--serif); font-size:1.5rem; color:var(--text); }
+.yr-table { width:100%; border-collapse:collapse; font-size:0.75rem; margin-top:1rem; }
+.yr-table th { color:var(--muted); font-weight:400; padding:0.45rem 0.6rem; border-bottom:0.5px solid var(--line); text-align:left; text-transform:uppercase; letter-spacing:0.05em; }
+.yr-table td { padding:0.42rem 0.6rem; border-bottom:0.5px solid rgba(255,255,255,0.04); color:var(--muted); }
+.yr-table tr:hover td { color:var(--text); }
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../finance.html">← Finance</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../finance.html">Finance</a><span>/</span><span>Compound Interest Calculator</span></div>
+  <h1 class="page-title">Compound Interest Calculator</h1>
+  <p class="page-desc">Calculate compound interest with daily, monthly, quarterly or yearly compounding. Includes a year-by-year growth table.</p>
+</div>
+<div class="tool-workspace">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1.25rem;margin-bottom:1.5rem">
+    <div class="option-group">
+      <div class="option-label">Principal Amount (₹)</div>
+      <input type="number" class="option-input" id="principal" value="100000" min="1" oninput="calc()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Annual Interest Rate (%) — <span id="rLabel">10%</span></div>
+      <div class="range-row" style="margin:0"><input type="range" class="range-input" id="rate" min="0.1" max="30" value="10" step="0.1" oninput="document.getElementById('rLabel').textContent=this.value+'%';calc()"></div>
+    </div>
+    <div class="option-group">
+      <div class="option-label">Time Period (Years) — <span id="yLabel">5 yrs</span></div>
+      <div class="range-row" style="margin:0"><input type="range" class="range-input" id="years" min="1" max="40" value="5" oninput="document.getElementById('yLabel').textContent=this.value+' yrs';calc()"></div>
+    </div>
+    <div class="option-group">
+      <div class="option-label">Compounding Frequency</div>
+      <select class="option-select" id="freq" onchange="calc()" style="width:100%">
+        <option value="365">Daily</option>
+        <option value="12">Monthly</option>
+        <option value="4">Quarterly</option>
+        <option value="2">Half-yearly</option>
+        <option value="1" selected>Yearly</option>
+      </select>
+    </div>
+  </div>
+  <div class="results-grid">
+    <div class="result-card"><div class="rc-label">Principal</div><div class="rc-value" id="prin">—</div></div>
+    <div class="result-card"><div class="rc-label">Interest Earned</div><div class="rc-value" id="interest" style="color:#6bffb8">—</div></div>
+    <div class="result-card" style="grid-column:1/-1"><div class="rc-label">Total Amount</div><div class="rc-value" id="total" style="font-size:2rem">—</div></div>
+  </div>
+  <div style="margin-top:2rem">
+    <div class="section-label" style="margin-bottom:0.75rem">Year-by-Year Growth</div>
+    <div style="overflow-x:auto">
+      <table class="yr-table">
+        <thead><tr><th>Year</th><th>Opening Balance</th><th>Interest</th><th>Closing Balance</th></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function fmt(n){return '₹'+Math.round(n).toLocaleString('en-IN');}
+function calc(){
+  const P=parseFloat(document.getElementById('principal').value)||0;
+  const r=parseFloat(document.getElementById('rate').value)/100;
+  const t=parseInt(document.getElementById('years').value)||1;
+  const n=parseInt(document.getElementById('freq').value);
+  const total=P*Math.pow(1+r/n,n*t);
+  const interest=total-P;
+  document.getElementById('prin').textContent=fmt(P);
+  document.getElementById('interest').textContent=fmt(interest);
+  document.getElementById('total').textContent=fmt(total);
+  let rows='', bal=P;
+  for(let y=1;y<=t;y++){
+    const newBal=P*Math.pow(1+r/n,n*y);
+    const yInt=newBal-bal;
+    rows+=`<tr><td>${y}</td><td>${fmt(bal)}</td><td>${fmt(yInt)}</td><td>${fmt(newBal)}</td></tr>`;
+    bal=newBal;
+  }
+  document.getElementById('tableBody').innerHTML=rows;
+}
+calc();
+</script>
+</body></html>

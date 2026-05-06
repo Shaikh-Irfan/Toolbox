@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Increase Image Size in KB — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../image-tools.html">← Image & Design</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../image-tools.html">Image & Design</a><span>/</span><span>Increase Image Size in KB</span></div>
+  <h1 class="page-title">Increase Image Size in KB</h1>
+  <p class="page-desc">Upscale or pad your image to meet a minimum file size in KB. Useful when forms require a minimum file size.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp">
+    <div class="drop-icon">📈</div>
+    <div class="drop-title">Drop your image here</div>
+    <div class="drop-sub">JPG, PNG, WEBP supported</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">🖼️</div>
+    <div class="file-info-text"><div class="file-info-name" id="fname"></div><div class="file-info-size" id="fsize"></div></div>
+    <button class="file-remove" onclick="reset()">✕</button>
+  </div>
+  <div id="controls" style="display:none">
+    <div class="options-row">
+      <div class="option-group">
+        <div class="option-label">Minimum target size (KB)</div>
+        <input type="number" class="option-input" id="targetKB" value="200" min="1" style="min-width:100px">
+      </div>
+      <div class="option-group">
+        <div class="option-label">Method</div>
+        <select class="option-select" id="method">
+          <option value="quality">Maximum quality (upscale resolution)</option>
+          <option value="png">Save as lossless PNG (largest)</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn-primary" onclick="increase()">Increase to Target Size</button></div>
+  </div>
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="status-msg" id="status"></div>
+  <div id="resultArea" style="display:none;margin-top:1.5rem">
+    <div class="result-box show">
+      <div class="result-label">Result</div>
+      <div class="result-stat" id="resultStat"></div>
+      <div class="result-sub" id="resultSub"></div>
+    </div>
+    <div style="margin-top:1rem"><img id="resultImg" style="max-width:100%;max-height:250px;border-radius:4px;border:0.5px solid rgba(255,255,255,0.1)"></div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-primary" id="dlBtn">⬇ Download Image</button>
+      <button class="btn-secondary" onclick="reset()">Try another</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+let origImg=null, origFile=null;
+
+function downloadBlob(blob, filename) {
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),15000);
+}
+
+function loadImg(file){
+  return new Promise((res,rej)=>{const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(url);res(img);};img.onerror=rej;img.src=url;});
+}
+
+function canvasToBlob(canvas,fmt,quality){
+  return new Promise(res=>canvas.toBlob(res,fmt,quality));
+}
+
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(2)+' MB';}
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+async function handleFile(f){
+  if(!f||!f.type.startsWith('image/')){setStatus('Please upload an image','error');return;}
+  origFile=f;origImg=await loadImg(f);
+  document.getElementById('fname').textContent=f.name;
+  document.getElementById('fsize').textContent=formatSize(f.size);
+  document.getElementById('fileInfo').style.display='flex';
+  dz.style.display='none';
+  document.getElementById('controls').style.display='block';
+  document.getElementById('resultArea').style.display='none';
+  setStatus('');
+}
+
+async function increase(){
+  const targetBytes=parseInt(document.getElementById('targetKB').value)*1024;
+  const method=document.getElementById('method').value;
+  if(!origImg||targetBytes<=0){setStatus('Please set a valid target size','error');return;}
+  const prog=document.getElementById('prog');const fill=document.getElementById('progFill');
+  prog.classList.add('active');fill.style.width='10%';
+  setStatus('Processing...');
+
+  let resultBlob=null;
+  if(method==='png'){
+    // Save as PNG — lossless, naturally larger
+    const canvas=document.createElement('canvas');
+    canvas.width=origImg.naturalWidth;canvas.height=origImg.naturalHeight;
+    canvas.getContext('2d').drawImage(origImg,0,0);
+    fill.style.width='50%';
+    resultBlob=await canvasToBlob(canvas,'image/png');
+    fill.style.width='80%';
+    // If still too small, upscale
+    let scale=1.5;
+    while(resultBlob.size<targetBytes&&scale<=8){
+      const c2=document.createElement('canvas');
+      c2.width=Math.round(origImg.naturalWidth*scale);
+      c2.height=Math.round(origImg.naturalHeight*scale);
+      c2.getContext('2d').drawImage(origImg,0,0,c2.width,c2.height);
+      const b=await canvasToBlob(c2,'image/png');
+      if(b.size>=targetBytes){resultBlob=b;break;}
+      resultBlob=b;scale*=1.5;
+    }
+  } else {
+    // Max quality JPEG — upscale resolution until size target met
+    let scale=1.0;
+    while(scale<=8){
+      fill.style.width=Math.min(80,10+scale*10)+'%';
+      const c=document.createElement('canvas');
+      c.width=Math.round(origImg.naturalWidth*scale);
+      c.height=Math.round(origImg.naturalHeight*scale);
+      const ctx=c.getContext('2d');
+      ctx.fillStyle='#ffffff';ctx.fillRect(0,0,c.width,c.height);
+      ctx.drawImage(origImg,0,0,c.width,c.height);
+      const b=await canvasToBlob(c,'image/jpeg',1.0);
+      resultBlob=b;
+      if(b.size>=targetBytes)break;
+      scale*=1.4;
+    }
+  }
+
+  fill.style.width='100%';
+  setTimeout(()=>prog.classList.remove('active'),400);
+
+  const url=URL.createObjectURL(resultBlob);
+  document.getElementById('resultImg').src=url;
+  document.getElementById('resultStat').textContent=formatSize(resultBlob.size);
+  document.getElementById('resultSub').textContent=`Original: ${formatSize(origFile.size)} → Target: ≥${formatSize(targetBytes)} → Achieved: ${formatSize(resultBlob.size)}`;
+  const ext=method==='png'?'png':'jpg';
+  const name=(origFile.name.replace(/\.[^.]+$/,'')||'image')+'-increased.'+ext;
+  document.getElementById('dlBtn').onclick=()=>downloadBlob(resultBlob,name);
+  document.getElementById('resultArea').style.display='block';
+  const met=resultBlob.size>=targetBytes;
+  setStatus(met?'Done! Target size met.':'Image too simple to reach target — try PNG method.', met?'success':'error');
+}
+
+function reset(){
+  origImg=null;origFile=null;
+  document.getElementById('fileInput').value='';
+  document.getElementById('fileInfo').style.display='none';
+  document.getElementById('controls').style.display='none';
+  document.getElementById('resultArea').style.display='none';
+  document.getElementById('prog').classList.remove('active');
+  dz.style.display='block';
+  setStatus('');
+}
+</script>
+</body></html>

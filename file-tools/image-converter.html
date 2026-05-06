@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Converter — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../file-converter.html">← File Converter</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../file-converter.html">File Converter</a><span>/</span><span>Image Converter</span></div>
+  <h1 class="page-title">Image Converter</h1>
+  <p class="page-desc">Convert images between PNG, JPG, WEBP, BMP and GIF formats instantly in your browser.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept="image/*">
+    <div class="drop-icon">🖼️</div>
+    <div class="drop-title">Drop your image here</div>
+    <div class="drop-sub">PNG, JPG, WEBP, BMP, GIF supported</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">🖼️</div>
+    <div class="file-info-text">
+      <div class="file-info-name" id="fname"></div>
+      <div class="file-info-size" id="fsize"></div>
+    </div>
+    <button class="file-remove" onclick="resetFile()">✕</button>
+  </div>
+  <div class="options-row">
+    <div class="option-group">
+      <div class="option-label">Convert to</div>
+      <select class="option-select" id="format">
+        <option value="image/png">PNG</option>
+        <option value="image/jpeg">JPG</option>
+        <option value="image/webp">WEBP</option>
+        <option value="image/bmp">BMP</option>
+      </select>
+    </div>
+    <div class="option-group" id="qualityGroup">
+      <div class="option-label">Quality (JPG/WEBP)</div>
+      <div class="range-row" style="margin:0">
+        <input type="range" class="range-input" id="quality" min="10" max="100" value="90" oninput="document.getElementById('qval').textContent=this.value+'%'">
+        <span class="range-val" id="qval">90%</span>
+      </div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-primary" id="convertBtn" onclick="convert()" disabled>Convert Image</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div class="result-box" id="result">
+    <div class="result-label">Conversion complete</div>
+    <div id="previewWrap" style="margin-bottom:1rem"><img id="preview" style="max-width:100%;max-height:200px;border-radius:3px;opacity:0.9"></div>
+    <div class="result-stat" id="resultName"></div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-primary" id="dlBtn">⬇ Download</button>
+      <button class="btn-secondary" onclick="resetFile()">Convert another</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+let currentFile = null, resultURL = null;
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(f) {
+  if (!f || !f.type.startsWith('image/')) { setStatus('Please upload an image file', 'error'); return; }
+  currentFile = f;
+  document.getElementById('fname').textContent = f.name;
+  document.getElementById('fsize').textContent = formatSize(f.size);
+  document.getElementById('fileInfo').style.display = 'flex';
+  dz.style.display = 'none';
+  document.getElementById('convertBtn').disabled = false;
+}
+
+function resetFile() {
+  currentFile = null; if(resultURL) URL.revokeObjectURL(resultURL);
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('result').classList.remove('show');
+  dz.style.display = 'block';
+  document.getElementById('convertBtn').disabled = true;
+  setStatus('');
+}
+
+function formatSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+function setStatus(msg, type) {
+  const s = document.getElementById('status');
+  s.textContent = msg; s.className = 'status-msg' + (type ? ' ' + type : '');
+}
+
+function getExt(mime) { return {['image/png']:'png',['image/jpeg']:'jpg',['image/webp']:'webp',['image/bmp']:'bmp'}[mime]||'png'; }
+
+function convert() {
+  if (!currentFile) return;
+  const fmt = document.getElementById('format').value;
+  const q = parseInt(document.getElementById('quality').value) / 100;
+  setStatus('Converting...');
+  const img = new Image();
+  const url = URL.createObjectURL(currentFile);
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width; canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    if (fmt === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height); }
+    ctx.drawImage(img, 0, 0);
+    canvas.toBlob(blob => {
+      if (resultURL) URL.revokeObjectURL(resultURL);
+      resultURL = URL.createObjectURL(blob);
+      const ext = getExt(fmt);
+      const name = currentFile.name.replace(/\.[^.]+$/, '') + '.' + ext;
+      document.getElementById('preview').src = resultURL;
+      document.getElementById('resultName').textContent = name;
+      document.getElementById('resultSub').textContent = `${img.width} × ${img.height}px · ${formatSize(blob.size)}`;
+      document.getElementById('dlBtn').onclick = () => { const a = document.createElement('a'); a.href = resultURL; a.download = name; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
+      document.getElementById('result').classList.add('show');
+      setStatus('Done!', 'success');
+      URL.revokeObjectURL(url);
+    }, fmt, q);
+  };
+  img.src = url;
+}
+</script>
+</body></html>

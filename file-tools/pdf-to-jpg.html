@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF to JPG — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../file-converter.html">← File Converter</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../file-converter.html">File Converter</a><span>/</span><span>PDF to JPG</span></div>
+  <h1 class="page-title">PDF to JPG</h1>
+  <p class="page-desc">Convert each page of your PDF into a high-quality JPG image. Download all as a ZIP file.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept=".pdf">
+    <div class="drop-icon">🖼️</div>
+    <div class="drop-title">Drop your PDF here</div>
+    <div class="drop-sub">or click to browse</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">📑</div>
+    <div class="file-info-text">
+      <div class="file-info-name" id="fname"></div>
+      <div class="file-info-size" id="fsize"></div>
+    </div>
+    <button class="file-remove" onclick="resetFile()">✕</button>
+  </div>
+  <div class="options-row" id="opts" style="display:none">
+    <div class="option-group">
+      <div class="option-label">Resolution (DPI scale)</div>
+      <select class="option-select" id="scale">
+        <option value="1">72 DPI (fast)</option>
+        <option value="1.5" selected>108 DPI (balanced)</option>
+        <option value="2">144 DPI (high quality)</option>
+      </select>
+    </div>
+    <div class="option-group">
+      <div class="option-label">Quality</div>
+      <div class="range-row" style="margin:0">
+        <input type="range" class="range-input" id="quality" min="50" max="100" value="90" oninput="document.getElementById('qval').textContent=this.value+'%'">
+        <span class="range-val" id="qval">90%</span>
+      </div>
+    </div>
+  </div>
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="btn-row">
+    <button class="btn-primary" id="convertBtn" onclick="convert()" disabled>Convert to JPG</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div class="result-box" id="result">
+    <div class="result-label">Conversion complete</div>
+    <div class="result-stat" id="resultStat"></div>
+    <div id="previewGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:0.5rem;margin:1rem 0"></div>
+    <div class="btn-row" style="margin-top:0.5rem">
+      <button class="btn-primary" id="dlBtn">⬇ Download All (ZIP)</button>
+      <button class="btn-secondary" onclick="resetFile()">Convert another</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let currentFile = null, pageBlobs = [];
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(f) {
+  if (!f || !f.name.match(/\.pdf$/i)) { setStatus('Please upload a PDF', 'error'); return; }
+  currentFile = f;
+  document.getElementById('fname').textContent = f.name;
+  document.getElementById('fsize').textContent = formatSize(f.size);
+  document.getElementById('fileInfo').style.display = 'flex';
+  document.getElementById('opts').style.display = 'flex';
+  dz.style.display = 'none';
+  document.getElementById('convertBtn').disabled = false;
+}
+
+function resetFile() {
+  currentFile = null; pageBlobs = [];
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('opts').style.display = 'none';
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('prog').classList.remove('active');
+  document.getElementById('previewGrid').innerHTML = '';
+  dz.style.display = 'block';
+  document.getElementById('convertBtn').disabled = true;
+  setStatus('');
+}
+
+function formatSize(b) { if(b<1024)return b+' B'; if(b<1048576)return(b/1024).toFixed(1)+' KB'; return(b/1048576).toFixed(1)+' MB'; }
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+async function convert() {
+  if (!currentFile) return;
+  document.getElementById('convertBtn').disabled = true;
+  pageBlobs = [];
+  document.getElementById('previewGrid').innerHTML = '';
+  const prog = document.getElementById('prog');
+  const fill = document.getElementById('progFill');
+  prog.classList.add('active'); fill.style.width = '5%';
+  const scale = parseFloat(document.getElementById('scale').value);
+  const quality = parseInt(document.getElementById('quality').value) / 100;
+  try {
+    const ab = await currentFile.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+    const total = pdf.numPages;
+    for (let i = 1; i <= total; i++) {
+      fill.style.width = (5 + (i/total)*85) + '%';
+      setStatus(`Rendering page ${i} of ${total}...`);
+      const page = await pdf.getPage(i);
+      const vp = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = vp.width; canvas.height = vp.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+      pageBlobs.push({ name: `page-${i}.jpg`, blob });
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(blob);
+      img.style.cssText = 'width:100%;border-radius:3px;opacity:0.85;border:0.5px solid rgba(255,255,255,0.1)';
+      document.getElementById('previewGrid').appendChild(img);
+    }
+    fill.style.width = '100%';
+    setTimeout(() => prog.classList.remove('active'), 400);
+    document.getElementById('resultStat').textContent = `${total} image${total>1?'s':''} ready`;
+    document.getElementById('dlBtn').onclick = async () => {
+      const zip = new JSZip();
+      pageBlobs.forEach(({ name, blob }) => zip.file(name, blob));
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(zipBlob); a.download = 'pdf-pages.zip'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    };
+    document.getElementById('result').classList.add('show');
+    setStatus('Done!', 'success');
+  } catch(e) {
+    setStatus('Failed: ' + e.message, 'error');
+    prog.classList.remove('active');
+  }
+  document.getElementById('convertBtn').disabled = false;
+}
+</script>
+</body></html>

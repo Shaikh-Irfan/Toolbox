@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPA Calculator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.subject-row{display:grid;grid-template-columns:1fr 100px 80px 36px;gap:0.5rem;align-items:center;margin-bottom:0.5rem}
+.subject-row input,.subject-row select{width:100%}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0;transition:color 0.2s;text-align:center}
+.del-btn:hover{color:#ff7878}
+.gpa-result{font-family:var(--serif);font-size:3.5rem;color:#6bffb8;margin:1.5rem 0 0.25rem}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../exam-tools.html">← Exam Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../exam-tools.html">Exam Tools</a><span>/</span><span>GPA Calculator</span></div>
+  <h1 class="page-title">GPA Calculator</h1>
+  <p class="page-desc">Add your subjects, grades and credits. Your weighted GPA is calculated instantly. Supports 10-point and 4-point scales.</p>
+</div>
+<div class="tool-workspace">
+  <div class="options-row" style="margin-bottom:1.25rem">
+    <div class="option-group">
+      <div class="option-label">Grading Scale</div>
+      <select class="option-select" id="scale" onchange="calcGpa()">
+        <option value="10">10-point scale (Indian universities)</option>
+        <option value="4">4-point scale (US/international)</option>
+      </select>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 100px 80px 36px;gap:0.5rem;margin-bottom:0.5rem">
+    <div class="option-label">Subject Name</div>
+    <div class="option-label">Grade / Points</div>
+    <div class="option-label">Credits</div>
+    <div></div>
+  </div>
+  <div id="subjectRows"></div>
+  <button class="btn-secondary" style="margin-top:0.5rem" onclick="addRow()">+ Add Subject</button>
+  <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:0.5px solid var(--line)">
+    <div class="option-label">Your GPA / SGPA</div>
+    <div class="gpa-result" id="gpaResult">—</div>
+    <div style="font-size:0.82rem;color:var(--muted)" id="gpaSub"></div>
+    <div style="font-size:0.82rem;color:var(--muted);margin-top:0.5rem" id="gradeRemark"></div>
+  </div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+let rowCount = 0;
+const GRADE_MAP_10 = {'O':10,'A+':9,'A':8,'B+':7,'B':6,'C':5,'D':4,'F':0,'P':5,'E':10};
+const GRADE_MAP_4 = {'A+':4.0,'A':4.0,'A-':3.7,'B+':3.3,'B':3.0,'B-':2.7,'C+':2.3,'C':2.0,'C-':1.7,'D+':1.3,'D':1.0,'F':0};
+
+function addRow(subj='', grade='', credits=3){
+  rowCount++;
+  const id = rowCount;
+  const scale = document.getElementById('scale').value;
+  const grades10 = ['O','A+','A','B+','B','C','D','F'];
+  const grades4 = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','F'];
+  const gradeOpts = scale==='10'
+    ? grades10.map(g=>`<option value="${g}"${g===grade?' selected':''}>${g}</option>`).join('')
+    : grades4.map(g=>`<option value="${g}"${g===grade?' selected':''}>${g}</option>`).join('');
+
+  const row = document.createElement('div');
+  row.className = 'subject-row';
+  row.id = 'row-'+id;
+  row.innerHTML = `
+    <input type="text" class="option-input" value="${subj}" placeholder="Subject ${id}" oninput="calcGpa()">
+    <select class="option-select" onchange="calcGpa()">${gradeOpts}</select>
+    <input type="number" class="option-input" value="${credits}" min="1" max="10" oninput="calcGpa()">
+    <button class="del-btn" onclick="removeRow(${id})">✕</button>`;
+  document.getElementById('subjectRows').appendChild(row);
+  calcGpa();
+}
+
+function removeRow(id){
+  const el = document.getElementById('row-'+id);
+  if(el){ el.remove(); calcGpa(); }
+}
+
+function calcGpa(){
+  const scale = document.getElementById('scale').value;
+  const map = scale==='10' ? GRADE_MAP_10 : GRADE_MAP_4;
+  const rows = document.querySelectorAll('.subject-row');
+  let totalPoints=0, totalCredits=0, validRows=0;
+  rows.forEach(row=>{
+    const grade = row.querySelector('select').value;
+    const credits = parseFloat(row.querySelectorAll('input')[1].value)||0;
+    const pts = map[grade];
+    if(pts!==undefined && credits>0){ totalPoints+=pts*credits; totalCredits+=credits; validRows++; }
+  });
+  if(totalCredits===0||validRows===0){ document.getElementById('gpaResult').textContent='—'; document.getElementById('gpaSub').textContent='Add subjects to calculate'; return; }
+  const gpa = totalPoints/totalCredits;
+  document.getElementById('gpaResult').textContent = gpa.toFixed(2);
+  document.getElementById('gpaSub').textContent = `${totalCredits} total credits · ${validRows} subject${validRows!==1?'s':''}`;
+  // Remark
+  let remark='';
+  if(scale==='10'){ if(gpa>=9)remark='🏆 Outstanding'; else if(gpa>=8)remark='🥇 Excellent'; else if(gpa>=7)remark='✅ First Class'; else if(gpa>=6)remark='👍 Second Class'; else if(gpa>=5)remark='⚠️ Passing'; else remark='❌ Below passing'; }
+  else { if(gpa>=3.7)remark='🏆 A — Excellent'; else if(gpa>=3.0)remark='✅ B — Good'; else if(gpa>=2.0)remark='👍 C — Satisfactory'; else if(gpa>=1.0)remark='⚠️ D — Passing'; else remark='❌ F — Failing'; }
+  document.getElementById('gradeRemark').textContent = remark;
+}
+
+// Add 5 default rows
+['Physics','Chemistry','Maths','English','Computer Science'].forEach((s,i)=>addRow(s,['O','A+','A','B+','B'][i],['4','4','4','2','3'][i]));
+</script>
+</body></html>

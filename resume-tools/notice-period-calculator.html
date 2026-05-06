@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notice Period Calculator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.date-result{font-family:var(--serif);font-size:2rem;color:#6bffb8;margin:1.5rem 0 0.25rem}
+.info-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:0.75rem;margin-top:1.5rem}
+.icard{padding:1.1rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px}
+.icard-label{font-size:0.62rem;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted);margin-bottom:0.3rem}
+.icard-val{font-family:var(--serif);font-size:1.2rem;color:var(--text)}
+.timeline{margin-top:1.5rem;display:flex;flex-direction:column;gap:0}
+.tl-item{display:flex;gap:1rem;padding:0.75rem 0;border-bottom:0.5px solid rgba(255,255,255,0.05)}
+.tl-dot{width:10px;height:10px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.tl-content{flex:1}
+.tl-date{font-size:0.75rem;color:var(--muted);margin-bottom:0.15rem}
+.tl-label{font-size:0.85rem;color:var(--text)}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../resume.html">← Resume & Career</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../resume.html">Resume & Career</a><span>/</span><span>Notice Period Calculator</span></div>
+  <h1 class="page-title">Notice Period Calculator</h1>
+  <p class="page-desc">Enter your resignation date and notice period length to find your last working day and key dates.</p>
+</div>
+<div class="tool-workspace" style="max-width:560px">
+  <div style="display:flex;flex-direction:column;gap:1.25rem;margin-bottom:1.5rem">
+    <div class="option-group">
+      <div class="option-label">Resignation Date (Last day of intimation)</div>
+      <input type="date" class="option-input" id="resignDate" oninput="calc()" style="width:100%">
+    </div>
+    <div class="options-row" style="flex-wrap:wrap">
+      <div class="option-group">
+        <div class="option-label">Notice Period (Days)</div>
+        <input type="number" class="option-input" id="noticeDays" value="90" min="1" oninput="calc()" style="min-width:100px">
+      </div>
+      <div class="option-group">
+        <div class="option-label">Quick Select</div>
+        <div style="display:flex;gap:0.4rem">
+          <button class="btn-secondary" style="padding:0.5rem 0.75rem;font-size:0.75rem" onclick="setDays(30)">30d</button>
+          <button class="btn-secondary" style="padding:0.5rem 0.75rem;font-size:0.75rem" onclick="setDays(60)">60d</button>
+          <button class="btn-secondary" style="padding:0.5rem 0.75rem;font-size:0.75rem" onclick="setDays(90)">90d</button>
+        </div>
+      </div>
+    </div>
+    <div class="options-row" style="flex-wrap:wrap">
+      <div class="option-group">
+        <div class="option-label">Count weekends?</div>
+        <select class="option-select" id="countWeekends" onchange="calc()">
+          <option value="yes">Yes — calendar days</option>
+          <option value="no">No — working days only</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="option-label">Last Working Day</div>
+  <div class="date-result" id="lastDay">—</div>
+  <div style="font-size:0.82rem;color:var(--muted)" id="lastDaySub"></div>
+  <div class="info-cards" id="infoCards"></div>
+
+  <div class="timeline" id="timeline" style="margin-top:1.5rem">
+    <div class="option-label" style="margin-bottom:0.5rem">Timeline</div>
+  </div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+// Set today as default
+document.getElementById('resignDate').value = new Date().toISOString().split('T')[0];
+
+function setDays(d){ document.getElementById('noticeDays').value=d; calc(); }
+
+function addDays(date, days, skipWeekends){
+  let d = new Date(date);
+  let added = 0;
+  while(added < days){
+    d.setDate(d.getDate()+1);
+    if(!skipWeekends || (d.getDay()!==0 && d.getDay()!==6)) added++;
+  }
+  return d;
+}
+
+function fmtDate(d){
+  return d.toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+function fmtShort(d){ return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
+
+function calc(){
+  const resDate = document.getElementById('resignDate').value;
+  const days = parseInt(document.getElementById('noticeDays').value)||0;
+  const skipWeekends = document.getElementById('countWeekends').value==='no';
+  if(!resDate||days<=0){ document.getElementById('lastDay').textContent='—'; return; }
+
+  const start = new Date(resDate);
+  const lastDay = addDays(start, days, skipWeekends);
+
+  const today = new Date();
+  const daysLeft = Math.ceil((lastDay-today)/(1000*60*60*24));
+  const weeksLeft = Math.floor(daysLeft/7);
+
+  document.getElementById('lastDay').textContent = fmtShort(lastDay);
+  document.getElementById('lastDaySub').textContent = `${fmtDate(lastDay)}`;
+
+  document.getElementById('infoCards').innerHTML = `
+    <div class="icard"><div class="icard-label">Notice days</div><div class="icard-val">${days} ${skipWeekends?'working ':''} days</div></div>
+    <div class="icard"><div class="icard-label">Days remaining</div><div class="icard-val">${Math.max(0,daysLeft)}</div></div>
+    <div class="icard"><div class="icard-label">Weeks remaining</div><div class="icard-val">${Math.max(0,weeksLeft)}</div></div>
+    <div class="icard"><div class="icard-label">Notice ends</div><div class="icard-val">${lastDay.toLocaleDateString('en-IN',{weekday:'short',month:'short',day:'numeric'})}</div></div>`;
+
+  // Midpoint
+  const midDay = addDays(start, Math.floor(days/2), skipWeekends);
+  document.getElementById('timeline').innerHTML = `
+    <div class="option-label" style="margin-bottom:0.75rem">Timeline</div>
+    <div class="tl-item"><div class="tl-dot" style="background:#ffc850"></div><div class="tl-content"><div class="tl-date">${fmtShort(start)}</div><div class="tl-label">Resignation submitted</div></div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:rgba(255,255,255,0.3)"></div><div class="tl-content"><div class="tl-date">${fmtShort(midDay)}</div><div class="tl-label">Halfway through notice period</div></div></div>
+    <div class="tl-item"><div class="tl-dot" style="background:#6bffb8"></div><div class="tl-content"><div class="tl-date">${fmtShort(lastDay)}</div><div class="tl-label">🎉 Last working day</div></div></div>`;
+}
+calc();
+</script>
+</body></html>

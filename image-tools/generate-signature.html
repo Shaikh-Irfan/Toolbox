@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generate Signature — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+#sigCanvas{border:0.5px solid rgba(255,255,255,0.15);border-radius:4px;background:#fff;cursor:crosshair;touch-action:none;display:block;width:100%;max-width:580px}
+.tab-row{display:flex;gap:0;margin-bottom:1.25rem;border:0.5px solid var(--card-border);border-radius:4px;overflow:hidden;width:fit-content}
+.tab-btn{padding:0.55rem 1.25rem;font-family:var(--sans);font-size:0.78rem;letter-spacing:0.06em;text-transform:uppercase;background:transparent;color:var(--muted);border:none;cursor:pointer;transition:background 0.2s,color 0.2s}
+.tab-btn.active{background:rgba(255,255,255,0.08);color:var(--text)}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../image-tools.html">← Image & Design</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../image-tools.html">Image & Design</a><span>/</span><span>Generate Signature</span></div>
+  <h1 class="page-title">Generate Signature</h1>
+  <p class="page-desc">Draw your signature with mouse or touch, or type it in a cursive font. Download as transparent PNG.</p>
+</div>
+<div class="tool-workspace">
+  <div class="tab-row">
+    <button class="tab-btn active" onclick="switchTab('draw')">✍️ Draw</button>
+    <button class="tab-btn" onclick="switchTab('type')">T Type</button>
+  </div>
+
+  <!-- DRAW TAB -->
+  <div id="drawTab">
+    <div class="options-row" style="margin-bottom:0.75rem">
+      <div class="option-group">
+        <div class="option-label">Ink color</div>
+        <input type="color" id="inkColor" value="#1a1a2e" onchange="updateInk()" style="background:var(--card-bg);border:0.5px solid var(--card-border);width:50px;height:36px;border-radius:3px;cursor:pointer;padding:2px">
+      </div>
+      <div class="option-group">
+        <div class="option-label">Pen size</div>
+        <div class="range-row" style="margin:0">
+          <input type="range" class="range-input" id="penSize" min="1" max="8" value="3" oninput="document.getElementById('penVal').textContent=this.value">
+          <span class="range-val" id="penVal">3</span>
+        </div>
+      </div>
+    </div>
+    <canvas id="sigCanvas" width="580" height="200"></canvas>
+    <div class="btn-row" style="margin-top:0.75rem">
+      <button class="btn-secondary" onclick="clearCanvas()">Clear</button>
+    </div>
+  </div>
+
+  <!-- TYPE TAB -->
+  <div id="typeTab" style="display:none">
+    <div class="options-row" style="margin-bottom:0.75rem;flex-wrap:wrap">
+      <div class="option-group" style="flex:1">
+        <div class="option-label">Your name</div>
+        <input type="text" class="option-input" id="sigText" placeholder="Type your name..." style="min-width:200px" oninput="renderTyped()">
+      </div>
+      <div class="option-group">
+        <div class="option-label">Style</div>
+        <select class="option-select" id="sigFont" onchange="renderTyped()">
+          <option value="Dancing Script">Dancing Script (cursive)</option>
+          <option value="Great Vibes">Great Vibes (elegant)</option>
+          <option value="Pacifico">Pacifico (casual)</option>
+          <option value="Sacramento">Sacramento (thin)</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <div class="option-label">Color</div>
+        <input type="color" id="typedColor" value="#1a1a2e" onchange="renderTyped()" style="background:var(--card-bg);border:0.5px solid var(--card-border);width:50px;height:36px;border-radius:3px;cursor:pointer;padding:2px">
+      </div>
+    </div>
+    <canvas id="typedCanvas" width="580" height="200" style="border:0.5px solid rgba(255,255,255,0.15);border-radius:4px;background:#fff;display:block;width:100%;max-width:580px"></canvas>
+  </div>
+
+  <div class="options-row" style="margin-top:1.25rem">
+    <div class="option-group">
+      <div class="option-label">Background</div>
+      <select class="option-select" id="bgType">
+        <option value="transparent">Transparent (PNG)</option>
+        <option value="white">White</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="btn-row" style="margin-top:1rem">
+    <button class="btn-primary" onclick="downloadSig()">⬇ Download Signature PNG</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Great+Vibes&family=Pacifico&family=Sacramento&display=swap" rel="stylesheet">
+<script>
+let drawing=false,lastX=0,lastY=0,activeTab='draw';
+const canvas=document.getElementById('sigCanvas');
+const ctx=canvas.getContext('2d');
+ctx.lineJoin='round';ctx.lineCap='round';ctx.lineWidth=3;ctx.strokeStyle='#1a1a2e';
+
+function updateInk(){ctx.strokeStyle=document.getElementById('inkColor').value;}
+
+function getPos(e,canvas){
+  const r=canvas.getBoundingClientRect();
+  const scaleX=canvas.width/r.width;const scaleY=canvas.height/r.height;
+  const src=e.touches?e.touches[0]:e;
+  return{x:(src.clientX-r.left)*scaleX,y:(src.clientY-r.top)*scaleY};
+}
+
+canvas.addEventListener('mousedown',e=>{const p=getPos(e,canvas);drawing=true;lastX=p.x;lastY=p.y;ctx.beginPath();ctx.moveTo(p.x,p.y);});
+canvas.addEventListener('mousemove',e=>{if(!drawing)return;ctx.lineWidth=parseInt(document.getElementById('penSize').value);const p=getPos(e,canvas);ctx.lineTo(p.x,p.y);ctx.stroke();lastX=p.x;lastY=p.y;});
+canvas.addEventListener('mouseup',()=>drawing=false);
+canvas.addEventListener('mouseleave',()=>drawing=false);
+canvas.addEventListener('touchstart',e=>{e.preventDefault();const p=getPos(e,canvas);drawing=true;lastX=p.x;lastY=p.y;ctx.beginPath();ctx.moveTo(p.x,p.y);},{passive:false});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;ctx.lineWidth=parseInt(document.getElementById('penSize').value);const p=getPos(e,canvas);ctx.lineTo(p.x,p.y);ctx.stroke();},{passive:false});
+canvas.addEventListener('touchend',()=>drawing=false);
+
+function clearCanvas(){ctx.clearRect(0,0,canvas.width,canvas.height);}
+
+function switchTab(tab){
+  activeTab=tab;
+  document.getElementById('drawTab').style.display=tab==='draw'?'block':'none';
+  document.getElementById('typeTab').style.display=tab==='type'?'block':'none';
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',i===(tab==='draw'?0:1)));
+}
+
+let fontLoaded={};
+async function renderTyped(){
+  const text=document.getElementById('sigText').value;
+  const font=document.getElementById('sigFont').value;
+  const color=document.getElementById('typedColor').value;
+  const c=document.getElementById('typedCanvas');
+  const cx=c.getContext('2d');
+  cx.clearRect(0,0,c.width,c.height);
+  if(!text)return;
+  await document.fonts.load(`72px "${font}"`);
+  cx.font=`72px "${font}"`;
+  cx.fillStyle=color;
+  cx.textAlign='center';cx.textBaseline='middle';
+  cx.fillText(text,c.width/2,c.height/2);
+}
+
+function downloadSig(){
+  const bg=document.getElementById('bgType').value;
+  const src=activeTab==='draw'?canvas:document.getElementById('typedCanvas');
+  const out=document.createElement('canvas');
+  out.width=src.width;out.height=src.height;
+  const octx=out.getContext('2d');
+  if(bg==='white'){octx.fillStyle='#ffffff';octx.fillRect(0,0,out.width,out.height);}
+  octx.drawImage(src,0,0);
+  // Check if anything was drawn
+  const data=octx.getImageData(0,0,out.width,out.height).data;
+  const hasContent=Array.from(data).some((v,i)=>i%4===3&&v>0);
+  if(!hasContent){setStatus('Please draw or type your signature first','error');return;}
+  out.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');
+    a.href=url;a.download='signature.png';document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),15000);
+    setStatus('Downloaded!','success');
+  },'image/png');
+}
+
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+</script>
+</body></html>

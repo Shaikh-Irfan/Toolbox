@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salary Hike Calculator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.hike-result{font-family:var(--serif);font-size:3rem;color:#6bffb8;margin:1.5rem 0 0.25rem}
+.salary-row{display:flex;justify-content:space-between;padding:0.55rem 0;border-bottom:0.5px solid rgba(255,255,255,0.05);font-size:0.82rem}
+.salary-row.total{border-top:0.5px solid var(--line);border-bottom:none;margin-top:0.5rem;padding-top:0.75rem}
+.salary-label{color:var(--muted)}
+.salary-val{color:var(--text);font-family:var(--serif)}
+.salary-card{background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px;padding:1.25rem;margin-top:1.5rem}
+.salary-card-title{font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.75rem}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../resume.html">← Resume & Career</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../resume.html">Resume & Career</a><span>/</span><span>Salary Hike Calculator</span></div>
+  <h1 class="page-title">Salary Hike Calculator</h1>
+  <p class="page-desc">Enter your current CTC and hike percentage to see your new salary, the absolute increase, and monthly change.</p>
+</div>
+<div class="tool-workspace" style="max-width:560px">
+  <div style="display:flex;flex-direction:column;gap:1.25rem;margin-bottom:1.5rem">
+    <div class="option-group">
+      <div class="option-label">Current Annual CTC (₹)</div>
+      <input type="number" class="option-input" id="currentCtc" value="800000" min="0" oninput="calc()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Hike Percentage (%) — <span id="hikeLabel">20%</span></div>
+      <div class="range-row" style="margin:0"><input type="range" class="range-input" id="hikeSlider" min="1" max="100" value="20" oninput="document.getElementById('hikeLabel').textContent=this.value+'%';document.getElementById('hikePct').value=this.value;calc()"></div>
+    </div>
+    <div class="option-group">
+      <div class="option-label">Or type hike %</div>
+      <input type="number" class="option-input" id="hikePct" value="20" min="0" max="500" oninput="syncSlider();calc()" style="width:100%">
+    </div>
+  </div>
+
+  <div class="option-label">New Annual CTC</div>
+  <div class="hike-result" id="newCtc">—</div>
+  <div style="font-size:0.82rem;color:var(--muted)" id="sub"></div>
+
+  <div class="salary-card">
+    <div class="salary-card-title">Salary breakdown</div>
+    <div id="breakdownRows"></div>
+  </div>
+
+  <!-- Hike needed section -->
+  <div style="margin-top:2rem;padding-top:1.5rem;border-top:0.5px solid var(--line)">
+    <div class="option-label" style="margin-bottom:1rem">What hike % do I need to reach a target?</div>
+    <div class="options-row">
+      <div class="option-group">
+        <div class="option-label">Target Annual CTC (₹)</div>
+        <input type="number" class="option-input" id="targetCtc" value="1000000" oninput="calcReverse()">
+      </div>
+    </div>
+    <div style="font-size:0.9rem;color:var(--muted);margin-top:0.75rem" id="reverseResult"></div>
+  </div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function fmt(n){ return '₹'+Math.round(n).toLocaleString('en-IN'); }
+
+function syncSlider(){
+  const v = Math.min(100, Math.max(1, parseInt(document.getElementById('hikePct').value)||1));
+  document.getElementById('hikeSlider').value = v;
+  document.getElementById('hikeLabel').textContent = document.getElementById('hikePct').value+'%';
+}
+
+function calc(){
+  const curr = parseFloat(document.getElementById('currentCtc').value)||0;
+  const pct = parseFloat(document.getElementById('hikePct').value)||0;
+  const newCtc = curr * (1 + pct/100);
+  const increase = newCtc - curr;
+
+  document.getElementById('newCtc').textContent = fmt(newCtc);
+  document.getElementById('sub').textContent = `Increase of ${fmt(increase)} per year`;
+
+  document.getElementById('breakdownRows').innerHTML = `
+    <div class="salary-row"><span class="salary-label">Current Annual CTC</span><span class="salary-val">${fmt(curr)}</span></div>
+    <div class="salary-row"><span class="salary-label">Current Monthly</span><span class="salary-val">${fmt(curr/12)}</span></div>
+    <div class="salary-row"><span class="salary-label">Hike percentage</span><span class="salary-val">${pct}%</span></div>
+    <div class="salary-row"><span class="salary-label">Annual increase</span><span class="salary-val" style="color:#6bffb8">+${fmt(increase)}</span></div>
+    <div class="salary-row"><span class="salary-label">Monthly increase</span><span class="salary-val" style="color:#6bffb8">+${fmt(increase/12)}</span></div>
+    <div class="salary-row total"><span class="salary-label">New Annual CTC</span><span class="salary-val" style="color:#6bffb8;font-size:1.1rem">${fmt(newCtc)}</span></div>
+    <div class="salary-row"><span class="salary-label">New Monthly (approx)</span><span class="salary-val">${fmt(newCtc/12)}</span></div>`;
+
+  calcReverse();
+}
+
+function calcReverse(){
+  const curr = parseFloat(document.getElementById('currentCtc').value)||0;
+  const target = parseFloat(document.getElementById('targetCtc').value)||0;
+  if(!curr||!target){ document.getElementById('reverseResult').textContent=''; return; }
+  const neededPct = ((target-curr)/curr)*100;
+  if(neededPct<=0){
+    document.getElementById('reverseResult').textContent = `Your target is lower than your current CTC.`;
+  } else {
+    document.getElementById('reverseResult').textContent = `You need a ${neededPct.toFixed(1)}% hike to reach ${fmt(target)} (increase of ${fmt(target-curr)}/year).`;
+    document.getElementById('reverseResult').style.color = '#6bffb8';
+  }
+}
+calc();
+</script>
+</body></html>

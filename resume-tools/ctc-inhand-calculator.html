@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTC to In-Hand Calculator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.salary-row{display:flex;justify-content:space-between;padding:0.55rem 0;border-bottom:0.5px solid rgba(255,255,255,0.05);font-size:0.82rem}
+.salary-row.total{border-top:0.5px solid var(--line);border-bottom:none;margin-top:0.5rem;padding-top:0.75rem;font-size:0.9rem}
+.salary-label{color:var(--muted)}
+.salary-val{color:var(--text);font-family:var(--serif)}
+.salary-section{background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px;padding:1.25rem;margin-bottom:0.75rem}
+.salary-section-title{font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.75rem}
+.inhand-big{font-family:var(--serif);font-size:2.5rem;color:#6bffb8;margin:1.5rem 0 0.25rem}
+.ctc-split-grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem}
+@media(max-width:700px){.ctc-split-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../resume.html">← Resume & Career</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../resume.html">Resume & Career</a><span>/</span><span>CTC to In-Hand</span></div>
+  <h1 class="page-title">CTC to In-Hand Calculator</h1>
+  <p class="page-desc">Enter your annual CTC and get a detailed monthly salary breakup — HRA, PF, professional tax and income tax deductions.</p>
+</div>
+<div class="tool-workspace">
+  <div class="ctc-split-grid">
+    <div style="display:flex;flex-direction:column;gap:1.25rem">
+      <div class="option-group">
+        <div class="option-label">Annual CTC (₹)</div>
+        <input type="number" class="option-input" id="ctc" value="1200000" min="0" oninput="calc()" style="width:100%">
+      </div>
+      <div class="option-group">
+        <div class="option-label">City type (for HRA)</div>
+        <select class="option-select" id="city" onchange="calc()" style="width:100%">
+          <option value="metro">Metro (Mumbai, Delhi, Chennai, Kolkata)</option>
+          <option value="nonmetro">Non-Metro</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <div class="option-label">Tax regime</div>
+        <select class="option-select" id="regime" onchange="calc()" style="width:100%">
+          <option value="new">New Regime (FY 2024-25)</option>
+          <option value="old">Old Regime</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <div class="option-label">Monthly rent paid (₹) — for HRA exemption</div>
+        <input type="number" class="option-input" id="rent" value="15000" min="0" oninput="calc()" style="width:100%">
+      </div>
+      <div class="option-group">
+        <div class="option-label">80C investments/year (₹) — Old Regime only</div>
+        <input type="number" class="option-input" id="d80c" value="150000" min="0" max="150000" oninput="calc()" style="width:100%">
+      </div>
+    </div>
+
+    <div>
+      <div class="option-label" style="margin-bottom:0.5rem">Monthly In-Hand Salary</div>
+      <div class="inhand-big" id="inhand">—</div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:1.5rem" id="inhandSub"></div>
+
+      <div class="salary-section">
+        <div class="salary-section-title">Earnings (Monthly)</div>
+        <div id="earningsRows"></div>
+      </div>
+      <div class="salary-section">
+        <div class="salary-section-title">Deductions (Monthly)</div>
+        <div id="deductionRows"></div>
+      </div>
+    </div>
+  </div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function fmt(n){ return '₹'+Math.round(n).toLocaleString('en-IN'); }
+function row(label, val, isTotal, color){
+  return `<div class="salary-row${isTotal?' total':''}"><span class="salary-label">${label}</span><span class="salary-val" style="${color?'color:'+color:''}">${fmt(val)}</span></div>`;
+}
+
+function calcTax(annual, regime, deductions){
+  const std = regime==='new' ? 75000 : 50000;
+  const taxable = Math.max(0, annual - std - (regime==='old' ? deductions : 0));
+  let tax = 0;
+  if(regime==='new'){
+    if(taxable<=300000) tax=0;
+    else if(taxable<=700000) tax=(taxable-300000)*0.05;
+    else if(taxable<=1000000) tax=20000+(taxable-700000)*0.10;
+    else if(taxable<=1200000) tax=50000+(taxable-1000000)*0.15;
+    else if(taxable<=1500000) tax=80000+(taxable-1200000)*0.20;
+    else tax=140000+(taxable-1500000)*0.30;
+    if(taxable<=700000) tax=0; // Rebate 87A
+  } else {
+    if(taxable<=250000) tax=0;
+    else if(taxable<=500000) tax=(taxable-250000)*0.05;
+    else if(taxable<=1000000) tax=12500+(taxable-500000)*0.20;
+    else tax=112500+(taxable-1000000)*0.30;
+    if(taxable<=500000) tax=0; // Rebate 87A old
+  }
+  return tax + tax*0.04; // +cess
+}
+
+function calc(){
+  const ctc = parseFloat(document.getElementById('ctc').value)||0;
+  const city = document.getElementById('city').value;
+  const regime = document.getElementById('regime').value;
+  const rent = parseFloat(document.getElementById('rent').value)||0;
+  const d80c = Math.min(150000, parseFloat(document.getElementById('d80c').value)||0);
+
+  const basic = ctc * 0.40;
+  const hra = ctc * (city==='metro' ? 0.20 : 0.15);
+  const special = ctc * 0.30;
+  const pf_employer = Math.min(basic * 0.12, 21600); // annual
+  const gratuity = (basic / 26) * 15 / 12 * 12; // approximate annual
+  const lta = ctc * 0.05;
+  const grossMonthly = ctc / 12;
+
+  // Monthly components
+  const mBasic = basic/12;
+  const mHra = hra/12;
+  const mSpecial = special/12;
+  const mLta = lta/12;
+
+  // Deductions monthly
+  const mPfEmployee = Math.min(mBasic*0.12, 1800);
+  const mPt = 200; // Professional tax ~200/month most states
+
+  // HRA exemption (old regime only)
+  let hraExemption = 0;
+  if(regime==='old'){
+    const opt1 = mHra;
+    const opt2 = rent - 0.1*mBasic;
+    const opt3 = city==='metro' ? 0.50*mBasic : 0.40*mBasic;
+    hraExemption = Math.max(0, Math.min(opt1, opt2, opt3));
+  }
+
+  const annualTaxableForTax = ctc - (mPfEmployee*12) - (hraExemption*12);
+  const annualTax = calcTax(annualTaxableForTax, regime, d80c);
+  const mTax = annualTax / 12;
+
+  const totalDeductions = mPfEmployee + mPt + mTax;
+  const inhand = grossMonthly - totalDeductions;
+
+  document.getElementById('inhand').textContent = fmt(inhand);
+  document.getElementById('inhandSub').textContent = `Annual: ${fmt(inhand*12)} · Take-home after all deductions`;
+
+  document.getElementById('earningsRows').innerHTML =
+    row('Basic Salary', mBasic) +
+    row('HRA', mHra) +
+    row('Special Allowance', mSpecial) +
+    row('LTA', mLta) +
+    row('Gross Monthly CTC', grossMonthly, true);
+
+  document.getElementById('deductionRows').innerHTML =
+    row('PF (Employee 12%)', mPfEmployee) +
+    row('Professional Tax', mPt) +
+    row('Income Tax (TDS)', mTax) +
+    row('Total Deductions', totalDeductions, true, '#ff7878') +
+    row('Net In-Hand', inhand, true, '#6bffb8');
+}
+calc();
+</script>
+</body></html>

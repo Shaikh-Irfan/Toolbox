@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIP Calculator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+@media(max-width:600px){ .calc-grid { grid-template-columns:1fr; } }
+.result-card { padding:1.5rem; background:var(--card-bg); border:0.5px solid var(--card-border); border-radius:4px; }
+.result-card-label { font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:0.4rem; }
+.result-card-value { font-family:var(--serif); font-size:1.5rem; color:var(--text); }
+.result-card-sub { font-size:0.72rem; color:var(--muted); margin-top:0.2rem; }
+.results-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:0.75rem; margin-top:1.5rem; }
+.bar-wrap { margin-top:1.5rem; }
+.bar-label { display:flex; justify-content:space-between; font-size:0.72rem; color:var(--muted); margin-bottom:0.4rem; }
+.bar-track { height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:3px; transition:width 0.5s; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../finance.html">← Finance</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../finance.html">Finance</a><span>/</span><span>SIP Calculator</span></div>
+  <h1 class="page-title">SIP Calculator</h1>
+  <p class="page-desc">Calculate your Systematic Investment Plan returns. See total invested, estimated returns and maturity value.</p>
+</div>
+<div class="tool-workspace">
+  <div class="calc-grid">
+    <div>
+      <div class="admin-form" style="display:flex;flex-direction:column;gap:1.25rem">
+        <div class="option-group">
+          <div class="option-label">Monthly Investment (₹)</div>
+          <input type="number" class="option-input" id="monthly" value="5000" min="100" oninput="calc()" style="width:100%">
+        </div>
+        <div class="option-group">
+          <div class="option-label">Expected Annual Return (%) — <span id="rLabel">12%</span></div>
+          <div class="range-row" style="margin:0"><input type="range" class="range-input" id="rate" min="1" max="30" value="12" step="0.5" oninput="document.getElementById('rLabel').textContent=this.value+'%';calc()"></div>
+        </div>
+        <div class="option-group">
+          <div class="option-label">Time Period (Years) — <span id="yLabel">10 yrs</span></div>
+          <div class="range-row" style="margin:0"><input type="range" class="range-input" id="years" min="1" max="40" value="10" oninput="document.getElementById('yLabel').textContent=this.value+' yrs';calc()"></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="results-grid">
+        <div class="result-card"><div class="result-card-label">Invested Amount</div><div class="result-card-value" id="invested">—</div></div>
+        <div class="result-card"><div class="result-card-label">Est. Returns</div><div class="result-card-value" id="returns" style="color:#6bffb8">—</div></div>
+        <div class="result-card" style="grid-column:1/-1"><div class="result-card-label">Total Value at Maturity</div><div class="result-card-value" id="maturity" style="font-size:2rem">—</div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label"><span>Invested</span><span>Returns</span></div>
+        <div class="bar-track"><div class="bar-fill" id="investBar" style="background:rgba(240,237,230,0.3);width:50%"></div></div>
+        <div class="bar-track" style="margin-top:4px"><div class="bar-fill" id="returnBar" style="background:#6bffb8;width:50%"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="ad-strip" style="margin-top:3rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function fmt(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
+function calc(){
+  const P = parseFloat(document.getElementById('monthly').value)||0;
+  const r = parseFloat(document.getElementById('rate').value)/100/12;
+  const n = parseInt(document.getElementById('years').value)*12;
+  if(!P||!r||!n){ return; }
+  const maturity = P * ((Math.pow(1+r,n)-1)/r) * (1+r);
+  const invested = P * n;
+  const returns = maturity - invested;
+  document.getElementById('invested').textContent = fmt(invested);
+  document.getElementById('returns').textContent = fmt(returns);
+  document.getElementById('maturity').textContent = fmt(maturity);
+  const pct = (invested/maturity)*100;
+  document.getElementById('investBar').style.width = pct+'%';
+  document.getElementById('returnBar').style.width = (100-pct)+'%';
+}
+calc();
+</script>
+</body></html>

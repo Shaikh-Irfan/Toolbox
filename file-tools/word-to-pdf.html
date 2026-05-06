@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word to PDF — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../file-converter.html">← File Converter</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../file-converter.html">File Converter</a><span>/</span><span>Word to PDF</span></div>
+  <h1 class="page-title">Word to PDF</h1>
+  <p class="page-desc">Convert your .docx or .doc Word files to PDF instantly. Runs entirely in your browser — nothing is uploaded.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept=".docx,.doc">
+    <div class="drop-icon">📄</div>
+    <div class="drop-title">Drop your Word file here</div>
+    <div class="drop-sub">or click to browse — .docx, .doc supported</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">📄</div>
+    <div class="file-info-text">
+      <div class="file-info-name" id="fname"></div>
+      <div class="file-info-size" id="fsize"></div>
+    </div>
+    <button class="file-remove" onclick="resetFile()">✕</button>
+  </div>
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="btn-row">
+    <button class="btn-primary" id="convertBtn" onclick="convert()" disabled>Convert to PDF</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div class="result-box" id="result">
+    <div class="result-label">Conversion complete</div>
+    <div class="result-stat" id="resultName"></div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-primary" id="dlBtn">⬇ Download PDF</button>
+      <button class="btn-secondary" onclick="resetFile()">Convert another</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script>
+let currentFile = null, pdfBlob = null;
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(f) {
+  if (!f) return;
+  if (!f.name.match(/\.(docx|doc)$/i)) { setStatus('Please upload a .docx or .doc file', 'error'); return; }
+  currentFile = f;
+  document.getElementById('fname').textContent = f.name;
+  document.getElementById('fsize').textContent = formatSize(f.size);
+  document.getElementById('fileInfo').style.display = 'flex';
+  dz.style.display = 'none';
+  document.getElementById('convertBtn').disabled = false;
+  setStatus('');
+}
+
+function resetFile() {
+  currentFile = null; pdfBlob = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('prog').classList.remove('active');
+  dz.style.display = 'block';
+  document.getElementById('convertBtn').disabled = true;
+  setStatus('');
+}
+
+function formatSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+function setStatus(msg, type) {
+  const s = document.getElementById('status');
+  s.textContent = msg; s.className = 'status-msg' + (type ? ' ' + type : '');
+}
+
+async function convert() {
+  if (!currentFile) return;
+  const btn = document.getElementById('convertBtn');
+  btn.disabled = true;
+  setStatus('Reading file...');
+  const prog = document.getElementById('prog');
+  const fill = document.getElementById('progFill');
+  prog.classList.add('active');
+  fill.style.width = '20%';
+
+  try {
+    const ab = await currentFile.arrayBuffer();
+    fill.style.width = '50%';
+    setStatus('Converting to HTML...');
+    const result = await mammoth.convertToHtml({ arrayBuffer: ab });
+    fill.style.width = '75%';
+    setStatus('Generating PDF...');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+      body{font-family:Georgia,serif;font-size:12pt;line-height:1.6;max-width:700px;margin:40px auto;padding:0 40px;color:#111}
+      h1,h2,h3{margin-top:1.5em;margin-bottom:.5em}p{margin-bottom:.8em}
+      table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:6px}
+    </style></head><body>${result.value}</body></html>`;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => {
+      win.print();
+      win.close();
+    }, 600);
+
+    fill.style.width = '100%';
+    setTimeout(() => prog.classList.remove('active'), 500);
+    document.getElementById('resultName').textContent = currentFile.name.replace(/\.(docx|doc)$/i, '.pdf');
+    document.getElementById('resultSub').textContent = 'Print dialog opened — choose "Save as PDF" in your printer options';
+    document.getElementById('result').classList.add('show');
+    setStatus('Done! Use "Save as PDF" in the print dialog.', 'success');
+  } catch(e) {
+    setStatus('Conversion failed: ' + e.message, 'error');
+    prog.classList.remove('active');
+  }
+  btn.disabled = false;
+}
+</script>
+</body></html>

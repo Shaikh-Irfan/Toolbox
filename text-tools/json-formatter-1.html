@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSON Formatter — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.editor-wrap { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+@media(max-width:680px){ .editor-wrap { grid-template-columns:1fr; } }
+.editor-label { font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:0.4rem; display:flex; justify-content:space-between; align-items:center; }
+.code-area { width:100%; background:#0d0d0d; border:0.5px solid var(--card-border); color:#e0e0e0; font-family:monospace; font-size:0.82rem; padding:1rem; border-radius:4px; outline:none; resize:vertical; line-height:1.6; min-height:320px; transition:border-color 0.2s; }
+.code-area:focus { border-color:rgba(255,255,255,0.25); }
+.code-area.valid { border-color:rgba(107,255,184,0.3); }
+.code-area.invalid { border-color:rgba(255,107,107,0.4); }
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../text-tools.html">← Text Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../text-tools.html">Text Tools</a><span>/</span><span>JSON Formatter</span></div>
+  <h1 class="page-title">JSON Formatter</h1>
+  <p class="page-desc">Paste your JSON to beautify, validate or minify it instantly. Errors are highlighted with a clear message.</p>
+</div>
+<div class="tool-workspace">
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.25rem">
+    <button class="btn-primary" onclick="format()">Beautify JSON</button>
+    <button class="btn-secondary" onclick="minify()">Minify</button>
+    <button class="btn-secondary" onclick="validate()">Validate Only</button>
+    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+  </div>
+  <div class="status-msg" id="status" style="margin-bottom:0.75rem;min-height:1.4em"></div>
+  <div class="editor-wrap">
+    <div>
+      <div class="editor-label">
+        <span>Input JSON</span>
+        <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.7rem" onclick="pasteFromClipboard()">📋 Paste</button>
+      </div>
+      <textarea class="code-area" id="inputJSON" placeholder='Paste your JSON here...\n\n{"name":"Toolbox","version":1}' oninput="onInput()"></textarea>
+    </div>
+    <div>
+      <div class="editor-label">
+        <span>Output</span>
+        <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.7rem" onclick="copyOutput()">📋 Copy</button>
+      </div>
+      <textarea class="code-area" id="outputJSON" placeholder="Formatted JSON will appear here..." readonly></textarea>
+    </div>
+  </div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function setStatus(msg, type){
+  const s = document.getElementById('status');
+  s.textContent = msg;
+  s.className = 'status-msg' + (type ? ' '+type : '');
+}
+
+function onInput(){
+  const val = document.getElementById('inputJSON').value.trim();
+  if(!val){ setStatus(''); document.getElementById('inputJSON').className='code-area'; return; }
+  try { JSON.parse(val); document.getElementById('inputJSON').className='code-area valid'; setStatus('Valid JSON ✓','success'); }
+  catch(e){ document.getElementById('inputJSON').className='code-area invalid'; setStatus('Invalid JSON: '+e.message,'error'); }
+}
+
+function format(){
+  const val = document.getElementById('inputJSON').value.trim();
+  if(!val){ setStatus('Please paste some JSON first.','error'); return; }
+  try {
+    const parsed = JSON.parse(val);
+    document.getElementById('outputJSON').value = JSON.stringify(parsed, null, 2);
+    document.getElementById('inputJSON').className = 'code-area valid';
+    setStatus('Formatted successfully ✓','success');
+  } catch(e){
+    document.getElementById('inputJSON').className = 'code-area invalid';
+    setStatus('Cannot format — Invalid JSON: '+e.message,'error');
+  }
+}
+
+function minify(){
+  const val = document.getElementById('inputJSON').value.trim();
+  if(!val){ setStatus('Please paste some JSON first.','error'); return; }
+  try {
+    const parsed = JSON.parse(val);
+    document.getElementById('outputJSON').value = JSON.stringify(parsed);
+    setStatus('Minified ✓','success');
+  } catch(e){ setStatus('Invalid JSON: '+e.message,'error'); }
+}
+
+function validate(){
+  const val = document.getElementById('inputJSON').value.trim();
+  if(!val){ setStatus('Please paste some JSON first.','error'); return; }
+  try {
+    const parsed = JSON.parse(val);
+    const keys = typeof parsed === 'object' && parsed !== null ? Object.keys(parsed).length : null;
+    setStatus(`Valid JSON ✓${keys !== null ? ' — '+keys+' top-level key'+(keys!==1?'s':'') : ''}`, 'success');
+    document.getElementById('inputJSON').className = 'code-area valid';
+  } catch(e){
+    setStatus('Invalid JSON: '+e.message,'error');
+    document.getElementById('inputJSON').className = 'code-area invalid';
+  }
+}
+
+function clearAll(){
+  document.getElementById('inputJSON').value = '';
+  document.getElementById('outputJSON').value = '';
+  document.getElementById('inputJSON').className = 'code-area';
+  setStatus('');
+}
+
+async function copyOutput(){
+  const text = document.getElementById('outputJSON').value;
+  if(!text){ setStatus('Nothing to copy.','error'); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus('Copied to clipboard!','success');
+  } catch(e){
+    document.getElementById('outputJSON').select();
+    setStatus('Text selected — press Ctrl+C to copy.','');
+  }
+  setTimeout(()=>setStatus(''),2000);
+}
+
+async function pasteFromClipboard(){
+  try {
+    const text = await navigator.clipboard.readText();
+    document.getElementById('inputJSON').value = text;
+    onInput();
+  } catch(e){ setStatus('Clipboard access denied — please paste manually (Ctrl+V).','error'); }
+}
+</script>
+</body></html>

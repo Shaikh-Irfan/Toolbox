@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGPA to CGPA — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.sem-row{display:grid;grid-template-columns:120px 1fr 80px 36px;gap:0.5rem;align-items:center;margin-bottom:0.5rem}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0;transition:color 0.2s;text-align:center}
+.del-btn:hover{color:#ff7878}
+.big-result{font-family:var(--serif);font-size:3.5rem;color:#6bffb8;margin:1.5rem 0 0.25rem}
+.sem-table{width:100%;border-collapse:collapse;font-size:0.8rem;margin-top:1rem}
+.sem-table th{color:var(--muted);font-weight:400;padding:0.4rem 0.6rem;border-bottom:0.5px solid var(--line);text-align:left;font-size:0.65rem;letter-spacing:0.08em;text-transform:uppercase}
+.sem-table td{padding:0.4rem 0.6rem;border-bottom:0.5px solid rgba(255,255,255,0.04);color:var(--muted)}
+.sem-table tr:hover td{color:var(--text)}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../exam-tools.html">← Exam Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../exam-tools.html">Exam Tools</a><span>/</span><span>SGPA to CGPA</span></div>
+  <h1 class="page-title">SGPA to CGPA</h1>
+  <p class="page-desc">Enter your SGPA and credits for each semester. Your overall CGPA is calculated as a weighted average.</p>
+</div>
+<div class="tool-workspace">
+  <div style="display:grid;grid-template-columns:120px 1fr 80px 36px;gap:0.5rem;margin-bottom:0.5rem">
+    <div class="option-label">Semester</div>
+    <div class="option-label">SGPA (out of 10)</div>
+    <div class="option-label">Credits</div>
+    <div></div>
+  </div>
+  <div id="semRows"></div>
+  <button class="btn-secondary" style="margin-bottom:1.5rem" onclick="addRow()">+ Add Semester</button>
+
+  <div style="padding-top:1.5rem;border-top:0.5px solid var(--line)">
+    <div class="option-label">Overall CGPA</div>
+    <div class="big-result" id="cgpaResult">—</div>
+    <div style="font-size:0.82rem;color:var(--muted)" id="cgpaSub"></div>
+    <div style="font-size:0.82rem;color:var(--muted);margin-top:0.3rem" id="cgpaRemark"></div>
+
+    <div style="margin-top:1.5rem">
+      <div class="option-label" style="margin-bottom:0.5rem">Semester breakdown</div>
+      <table class="sem-table">
+        <thead><tr><th>Semester</th><th>SGPA</th><th>Credits</th><th>Weight</th></tr></thead>
+        <tbody id="semTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+let rowCount = 0;
+
+function addRow(sgpa='', credits='24'){
+  rowCount++;
+  const id = rowCount;
+  const row = document.createElement('div');
+  row.className = 'sem-row';
+  row.id = 'semrow-'+id;
+  row.innerHTML = `
+    <div class="option-input" style="display:flex;align-items:center;padding:0.55rem 0.85rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:3px;font-size:0.82rem;color:var(--muted)">Sem ${id}</div>
+    <input type="number" class="option-input" value="${sgpa}" placeholder="e.g. 8.5" min="0" max="10" step="0.01" oninput="calcCgpa()" style="width:100%">
+    <input type="number" class="option-input" value="${credits}" placeholder="24" min="1" max="50" oninput="calcCgpa()" style="width:100%">
+    <button class="del-btn" onclick="removeRow(${id})">✕</button>`;
+  document.getElementById('semRows').appendChild(row);
+  calcCgpa();
+}
+
+function removeRow(id){
+  const el = document.getElementById('semrow-'+id);
+  if(el){ el.remove(); calcCgpa(); }
+}
+
+function calcCgpa(){
+  const rows = document.querySelectorAll('.sem-row');
+  let totalWeighted = 0, totalCredits = 0;
+  const tableRows = [];
+  let semNum = 1;
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input[type="number"]');
+    const sgpa = parseFloat(inputs[0].value);
+    const credits = parseFloat(inputs[1].value)||0;
+    if(!isNaN(sgpa) && sgpa >= 0 && sgpa <= 10 && credits > 0){
+      totalWeighted += sgpa * credits;
+      totalCredits += credits;
+      tableRows.push({sem:semNum, sgpa, credits, weight:(sgpa*credits).toFixed(2)});
+    }
+    semNum++;
+  });
+
+  if(totalCredits === 0){
+    document.getElementById('cgpaResult').textContent = '—';
+    document.getElementById('cgpaSub').textContent = 'Add semesters to calculate';
+    document.getElementById('semTableBody').innerHTML = '';
+    return;
+  }
+
+  const cgpa = totalWeighted / totalCredits;
+  document.getElementById('cgpaResult').textContent = cgpa.toFixed(2);
+  document.getElementById('cgpaSub').textContent = `${rows.length} semester${rows.length!==1?'s':''} · ${totalCredits} total credits`;
+
+  let remark = '';
+  if(cgpa >= 9) remark = '🏆 Outstanding — Top of class';
+  else if(cgpa >= 8) remark = '🥇 Excellent — First Class with Distinction';
+  else if(cgpa >= 7) remark = '✅ Very Good — First Class';
+  else if(cgpa >= 6) remark = '👍 Good — Second Class';
+  else if(cgpa >= 5) remark = '⚠️ Average — Passing';
+  else remark = '❌ Below passing grade';
+  document.getElementById('cgpaRemark').textContent = remark;
+
+  document.getElementById('semTableBody').innerHTML = tableRows.map(r =>
+    `<tr><td>Semester ${r.sem}</td><td>${r.sgpa.toFixed(2)}</td><td>${r.credits}</td><td>${r.weight}</td></tr>`
+  ).join('') + `<tr style="border-top:0.5px solid var(--line)"><td style="color:var(--text)"><strong>CGPA</strong></td><td style="color:#6bffb8"><strong>${cgpa.toFixed(2)}</strong></td><td style="color:var(--text)">${totalCredits}</td><td></td></tr>`;
+}
+
+// Default 6 semesters
+[8.5, 8.2, 8.8, 7.9, 8.6, 8.1].forEach(s => addRow(s));
+</script>
+</body></html>

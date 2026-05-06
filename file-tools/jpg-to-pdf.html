@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JPG to PDF — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../file-converter.html">← File Converter</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../file-converter.html">File Converter</a><span>/</span><span>JPG to PDF</span></div>
+  <h1 class="page-title">JPG to PDF</h1>
+  <p class="page-desc">Bundle one or more images into a single PDF. Supports JPG, PNG, WEBP. Runs entirely in your browser.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept="image/*" multiple>
+    <div class="drop-icon">📷</div>
+    <div class="drop-title">Drop images here</div>
+    <div class="drop-sub">JPG, PNG, WEBP — multiple files allowed</div>
+  </div>
+  <div class="multi-drop-list" id="fileList"></div>
+  <div class="options-row" id="opts" style="display:none">
+    <div class="option-group">
+      <div class="option-label">Page size</div>
+      <select class="option-select" id="pageSize">
+        <option value="a4">A4</option>
+        <option value="letter">US Letter</option>
+        <option value="fit">Fit to image</option>
+      </select>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-primary" id="convertBtn" onclick="convert()" disabled>Create PDF</button>
+    <button class="btn-secondary" id="clearBtn" onclick="clearFiles()" style="display:none">Clear all</button>
+  </div>
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="status-msg" id="status"></div>
+  <div class="result-box" id="result">
+    <div class="result-label">PDF created</div>
+    <div class="result-stat" id="resultStat"></div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-primary" id="dlBtn">⬇ Download PDF</button>
+      <button class="btn-secondary" onclick="clearFiles()">Start over</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script>
+let files = [];
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); addFiles([...e.dataTransfer.files]); });
+document.getElementById('fileInput').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value=''; });
+
+function addFiles(newFiles) {
+  newFiles.filter(f => f.type.startsWith('image/')).forEach(f => files.push(f));
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('fileList');
+  list.innerHTML = '';
+  files.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'file-info';
+    div.innerHTML = `<div class="file-info-icon">🖼️</div>
+      <div class="file-info-text">
+        <div class="file-info-name">${i+1}. ${f.name}</div>
+        <div class="file-info-size">${formatSize(f.size)}</div>
+      </div>
+      <button class="file-remove" onclick="removeFile(${i})">✕</button>`;
+    list.appendChild(div);
+  });
+  document.getElementById('convertBtn').disabled = files.length === 0;
+  document.getElementById('clearBtn').style.display = files.length ? 'inline-flex' : 'none';
+  document.getElementById('opts').style.display = files.length ? 'flex' : 'none';
+}
+
+function removeFile(i) { files.splice(i, 1); renderList(); }
+function clearFiles() { files = []; document.getElementById('result').classList.remove('show'); document.getElementById('prog').classList.remove('active'); renderList(); setStatus(''); }
+function formatSize(b) { if (b<1024) return b+' B'; if (b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+function setStatus(msg, type) { const s=document.getElementById('status'); s.textContent=msg; s.className='status-msg'+(type?' '+type:''); }
+
+async function loadImage(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = e => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = e.target.result; };
+    reader.onerror = rej;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function convert() {
+  if (!files.length) return;
+  document.getElementById('convertBtn').disabled = true;
+  const prog = document.getElementById('prog');
+  const fill = document.getElementById('progFill');
+  prog.classList.add('active'); fill.style.width = '5%';
+  const pageSize = document.getElementById('pageSize').value;
+  const A4 = [595.28, 841.89]; const LETTER = [612, 792];
+  try {
+    const pdf = await PDFLib.PDFDocument.create();
+    for (let i = 0; i < files.length; i++) {
+      fill.style.width = (5 + ((i+1)/files.length)*85) + '%';
+      setStatus(`Adding image ${i+1} of ${files.length}...`);
+      const ab = await files[i].arrayBuffer();
+      let img;
+      if (files[i].type === 'image/jpeg') img = await pdf.embedJpg(ab);
+      else {
+        const canvas = document.createElement('canvas');
+        const imgEl = await loadImage(files[i]);
+        canvas.width = imgEl.width; canvas.height = imgEl.height;
+        canvas.getContext('2d').drawImage(imgEl, 0, 0);
+        const jpgData = canvas.toDataURL('image/jpeg', 0.92);
+        const jpgBytes = await fetch(jpgData).then(r => r.arrayBuffer());
+        img = await pdf.embedJpg(jpgBytes);
+      }
+      let pw, ph;
+      if (pageSize === 'fit') { pw = img.width; ph = img.height; }
+      else { [pw, ph] = pageSize === 'a4' ? A4 : LETTER; }
+      const page = pdf.addPage([pw, ph]);
+      const scale = Math.min(pw / img.width, ph / img.height);
+      const dw = img.width * scale; const dh = img.height * scale;
+      page.drawImage(img, { x: (pw-dw)/2, y: (ph-dh)/2, width: dw, height: dh });
+    }
+    fill.style.width = '100%';
+    const bytes = await pdf.save();
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    setTimeout(() => prog.classList.remove('active'), 400);
+    document.getElementById('resultStat').textContent = 'images.pdf';
+    document.getElementById('resultSub').textContent = `${files.length} page${files.length>1?'s':''} · ${formatSize(blob.size)}`;
+    document.getElementById('dlBtn').onclick = () => { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='images.pdf'; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
+    document.getElementById('result').classList.add('show');
+    setStatus('Done!', 'success');
+  } catch(e) {
+    setStatus('Failed: ' + e.message, 'error');
+    prog.classList.remove('active');
+  }
+  document.getElementById('convertBtn').disabled = false;
+}
+</script>
+</body></html>

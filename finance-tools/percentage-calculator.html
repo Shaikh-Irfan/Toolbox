@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Percentage Calculator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.calc-block{background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px;padding:1.5rem;margin-bottom:0.75rem}
+.calc-block-title{font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem}
+.inline-inputs{display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap}
+.inline-label{font-size:0.85rem;color:var(--muted);white-space:nowrap}
+.inline-input{background:var(--bg);border:0.5px solid var(--card-border);color:var(--text);font-family:var(--sans);font-size:0.9rem;padding:0.5rem 0.75rem;border-radius:3px;outline:none;width:110px;transition:border-color 0.2s}
+.inline-input:focus{border-color:rgba(255,255,255,0.3)}
+.calc-answer{font-family:var(--serif);font-size:1.8rem;color:#6bffb8;margin-top:1rem}
+.calc-answer-label{font-size:0.72rem;color:var(--muted);margin-top:0.25rem}
+.calc-block { background:var(--card-bg); border:0.5px solid var(--card-border); border-radius:4px; padding:1.5rem; margin-bottom:0.75rem; }
+.calc-block-title { font-size:0.68rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:1rem; }
+.inline-inputs { display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; }
+.inline-label { font-size:0.85rem; color:var(--muted); white-space:nowrap; }
+.inline-input { background:var(--bg); border:0.5px solid var(--card-border); color:var(--text); font-family:var(--sans); font-size:0.9rem; padding:0.5rem 0.75rem; border-radius:3px; outline:none; width:110px; transition:border-color 0.2s; }
+.inline-input:focus { border-color:rgba(255,255,255,0.3); }
+.calc-answer { font-family:var(--serif); font-size:1.8rem; color:#6bffb8; margin-top:1rem; }
+.calc-answer-label { font-size:0.72rem; color:var(--muted); margin-top:0.25rem; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../finance.html">← Finance</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../finance.html">Finance</a><span>/</span><span>Percentage Calculator</span></div>
+  <h1 class="page-title">Percentage Calculator</h1>
+  <p class="page-desc">Six common percentage calculations in one place. All update live as you type.</p>
+</div>
+<div class="tool-workspace">
+
+  <!-- 1 -->
+  <div class="calc-block">
+    <div class="calc-block-title">01 — What is X% of Y?</div>
+    <div class="inline-inputs">
+      <span class="inline-label">What is</span>
+      <input type="number" class="inline-input" id="p1x" value="15" oninput="c1()">
+      <span class="inline-label">% of</span>
+      <input type="number" class="inline-input" id="p1y" value="200" oninput="c1()">
+    </div>
+    <div class="calc-answer" id="r1">—</div>
+    <div class="calc-answer-label" id="r1sub"></div>
+  </div>
+
+  <!-- 2 -->
+  <div class="calc-block">
+    <div class="calc-block-title">02 — X is what % of Y?</div>
+    <div class="inline-inputs">
+      <input type="number" class="inline-input" id="p2x" value="30" oninput="c2()">
+      <span class="inline-label">is what % of</span>
+      <input type="number" class="inline-input" id="p2y" value="200" oninput="c2()">
+    </div>
+    <div class="calc-answer" id="r2">—</div>
+    <div class="calc-answer-label" id="r2sub"></div>
+  </div>
+
+  <!-- 3 -->
+  <div class="calc-block">
+    <div class="calc-block-title">03 — Percentage Increase</div>
+    <div class="inline-inputs">
+      <span class="inline-label">From</span>
+      <input type="number" class="inline-input" id="p3from" value="100" oninput="c3()">
+      <span class="inline-label">to</span>
+      <input type="number" class="inline-input" id="p3to" value="150" oninput="c3()">
+    </div>
+    <div class="calc-answer" id="r3">—</div>
+    <div class="calc-answer-label" id="r3sub"></div>
+  </div>
+
+  <!-- 4 -->
+  <div class="calc-block">
+    <div class="calc-block-title">04 — Percentage Decrease</div>
+    <div class="inline-inputs">
+      <span class="inline-label">From</span>
+      <input type="number" class="inline-input" id="p4from" value="200" oninput="c4()">
+      <span class="inline-label">to</span>
+      <input type="number" class="inline-input" id="p4to" value="150" oninput="c4()">
+    </div>
+    <div class="calc-answer" id="r4">—</div>
+    <div class="calc-answer-label" id="r4sub"></div>
+  </div>
+
+  <!-- 5 -->
+  <div class="calc-block">
+    <div class="calc-block-title">05 — Increase a Number by X%</div>
+    <div class="inline-inputs">
+      <span class="inline-label">Increase</span>
+      <input type="number" class="inline-input" id="p5n" value="500" oninput="c5()">
+      <span class="inline-label">by</span>
+      <input type="number" class="inline-input" id="p5p" value="20" oninput="c5()">
+      <span class="inline-label">%</span>
+    </div>
+    <div class="calc-answer" id="r5">—</div>
+    <div class="calc-answer-label" id="r5sub"></div>
+  </div>
+
+  <!-- 6 -->
+  <div class="calc-block">
+    <div class="calc-block-title">06 — Decrease a Number by X%</div>
+    <div class="inline-inputs">
+      <span class="inline-label">Decrease</span>
+      <input type="number" class="inline-input" id="p6n" value="500" oninput="c6()">
+      <span class="inline-label">by</span>
+      <input type="number" class="inline-input" id="p6p" value="20" oninput="c6()">
+      <span class="inline-label">%</span>
+    </div>
+    <div class="calc-answer" id="r6">—</div>
+    <div class="calc-answer-label" id="r6sub"></div>
+  </div>
+
+  <div class="ad-strip">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function n(id){return parseFloat(document.getElementById(id).value)||0;}
+function fmt(v){return isNaN(v)||!isFinite(v)?'—':+v.toFixed(4)%1===0?v.toFixed(0):+v.toFixed(2)+'';}
+
+function c1(){
+  const x=n('p1x'),y=n('p1y'),r=x/100*y;
+  document.getElementById('r1').textContent=fmt(r);
+  document.getElementById('r1sub').textContent=`${x}% of ${y} = ${fmt(r)}`;
+}
+function c2(){
+  const x=n('p2x'),y=n('p2y');
+  if(!y){document.getElementById('r2').textContent='—';return;}
+  const r=x/y*100;
+  document.getElementById('r2').textContent=fmt(r)+'%';
+  document.getElementById('r2sub').textContent=`${x} is ${fmt(r)}% of ${y}`;
+}
+function c3(){
+  const f=n('p3from'),t=n('p3to');
+  if(!f){document.getElementById('r3').textContent='—';return;}
+  const r=(t-f)/f*100;
+  document.getElementById('r3').textContent=fmt(r)+'%';
+  document.getElementById('r3sub').textContent=`${f} → ${t} is a ${fmt(r)}% increase`;
+}
+function c4(){
+  const f=n('p4from'),t=n('p4to');
+  if(!f){document.getElementById('r4').textContent='—';return;}
+  const r=(f-t)/f*100;
+  document.getElementById('r4').textContent=fmt(r)+'%';
+  document.getElementById('r4sub').textContent=`${f} → ${t} is a ${fmt(r)}% decrease`;
+}
+function c5(){
+  const base=n('p5n'),pct=n('p5p');
+  const r=base*(1+pct/100);
+  document.getElementById('r5').textContent=fmt(r);
+  document.getElementById('r5sub').textContent=`${base} + ${pct}% = ${fmt(r)}`;
+}
+function c6(){
+  const base=n('p6n'),pct=n('p6p');
+  const r=base*(1-pct/100);
+  document.getElementById('r6').textContent=fmt(r);
+  document.getElementById('r6sub').textContent=`${base} − ${pct}% = ${fmt(r)}`;
+}
+c1();c2();c3();c4();c5();c6();
+</script>
+</body></html>

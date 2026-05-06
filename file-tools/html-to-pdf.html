@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTML to PDF — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../file-converter.html">← File Converter</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../file-converter.html">File Converter</a><span>/</span><span>HTML to PDF</span></div>
+  <h1 class="page-title">HTML to PDF</h1>
+  <p class="page-desc">Paste your HTML code or upload an .html file and convert it to a printable PDF.</p>
+</div>
+<div class="tool-workspace">
+  <div class="options-row">
+    <div class="option-group">
+      <div class="option-label">Input method</div>
+      <select class="option-select" id="inputMethod" onchange="toggleInput()">
+        <option value="paste">Paste HTML code</option>
+        <option value="file">Upload .html file</option>
+      </select>
+    </div>
+  </div>
+  <div id="pasteArea">
+    <textarea class="textarea-tool" id="htmlInput" placeholder="Paste your HTML here..." style="min-height:260px;font-family:monospace;font-size:0.82rem"></textarea>
+  </div>
+  <div id="fileArea" style="display:none">
+    <div class="drop-zone" id="dz">
+      <input type="file" id="fileInput" accept=".html,.htm">
+      <div class="drop-icon">🌐</div>
+      <div class="drop-title">Drop your HTML file here</div>
+      <div class="drop-sub">.html or .htm</div>
+    </div>
+    <div id="fileInfo" class="file-info" style="display:none">
+      <div class="file-info-icon">🌐</div>
+      <div class="file-info-text"><div class="file-info-name" id="fname"></div><div class="file-info-size" id="fsize"></div></div>
+      <button class="file-remove" onclick="resetFile()">✕</button>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-primary" onclick="convert()">Convert to PDF</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+let loadedHTML='';
+
+function toggleInput() {
+  const m=document.getElementById('inputMethod').value;
+  document.getElementById('pasteArea').style.display=m==='paste'?'block':'none';
+  document.getElementById('fileArea').style.display=m==='file'?'block':'none';
+}
+
+async function handleFile(f) {
+  if(!f)return;
+  loadedHTML=await f.text();
+  document.getElementById('fname').textContent=f.name;
+  document.getElementById('fsize').textContent=formatSize(f.size);
+  document.getElementById('fileInfo').style.display='flex';
+  dz.style.display='none';
+  setStatus('File loaded. Click Convert to PDF.','success');
+}
+
+function resetFile(){
+  loadedHTML='';
+  document.getElementById('fileInput').value='';
+  document.getElementById('fileInfo').style.display='none';
+  dz.style.display='block';
+  setStatus('');
+}
+
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+function convert() {
+  const method=document.getElementById('inputMethod').value;
+  let html=method==='paste'?document.getElementById('htmlInput').value:loadedHTML;
+  if(!html.trim()){setStatus('Please enter or upload HTML first','error');return;}
+  if(!html.includes('<html')){html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:12pt;margin:40px;line-height:1.6}</style></head><body>${html}</body></html>`;}
+  const win=window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(()=>{win.print();win.close();},600);
+  setStatus('Print dialog opened — choose "Save as PDF".','success');
+}
+</script>
+</body></html>

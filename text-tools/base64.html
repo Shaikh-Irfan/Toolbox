@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Base64 Encoder / Decoder — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.tab-row{display:flex;gap:0;margin-bottom:1.5rem;border:0.5px solid var(--card-border);border-radius:4px;overflow:hidden;width:fit-content}
+.tab-btn{padding:0.55rem 1.5rem;font-family:var(--sans);font-size:0.78rem;letter-spacing:0.06em;text-transform:uppercase;background:transparent;color:var(--muted);border:none;cursor:pointer;transition:background 0.2s,color 0.2s}
+.tab-btn.active{background:rgba(255,255,255,0.08);color:var(--text)}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../text-tools.html">← Text Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../text-tools.html">Text Tools</a><span>/</span><span>Base64 Encoder / Decoder</span></div>
+  <h1 class="page-title">Base64 Encoder / Decoder</h1>
+  <p class="page-desc">Encode any text or URL to Base64, or decode a Base64 string back to readable text. Runs entirely in your browser.</p>
+</div>
+<div class="tool-workspace">
+  <div class="tab-row">
+    <button class="tab-btn active" id="encTab" onclick="switchTab('encode')">Encode</button>
+    <button class="tab-btn" id="decTab" onclick="switchTab('decode')">Decode</button>
+  </div>
+
+  <div class="option-group" style="margin-bottom:1rem;width:100%">
+    <div class="option-label" id="inputLabel">Plain Text → Base64</div>
+    <textarea class="textarea-tool" id="inputText" placeholder="Type or paste text to encode..." style="min-height:160px" oninput="autoProcess()"></textarea>
+  </div>
+
+  <div class="btn-row" style="margin-top:0;margin-bottom:1rem">
+    <button class="btn-primary" id="actionBtn" onclick="process()">Encode to Base64</button>
+    <button class="btn-secondary" onclick="swapText()">⇄ Swap</button>
+    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+  </div>
+
+  <div class="status-msg" id="status" style="margin-bottom:0.75rem"></div>
+
+  <div id="outputArea" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem">
+      <div class="option-label" id="outputLabel">Base64 Output</div>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.7rem;font-family:var(--sans)" onclick="copyOutput()">📋 Copy</button>
+    </div>
+    <textarea class="textarea-tool" id="outputText" style="min-height:160px;font-family:monospace;font-size:0.82rem" readonly></textarea>
+  </div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+let mode = 'encode';
+
+function switchTab(m){
+  mode = m;
+  document.getElementById('encTab').classList.toggle('active', m==='encode');
+  document.getElementById('decTab').classList.toggle('active', m==='decode');
+  document.getElementById('inputLabel').textContent = m==='encode' ? 'Plain Text → Base64' : 'Base64 → Plain Text';
+  document.getElementById('outputLabel').textContent = m==='encode' ? 'Base64 Output' : 'Decoded Text';
+  document.getElementById('actionBtn').textContent = m==='encode' ? 'Encode to Base64' : 'Decode from Base64';
+  document.getElementById('inputText').placeholder = m==='encode' ? 'Type or paste text to encode...' : 'Paste Base64 string to decode...';
+  document.getElementById('outputArea').style.display = 'none';
+  document.getElementById('outputText').value = '';
+  setStatus('');
+}
+
+function process(){
+  const input = document.getElementById('inputText').value;
+  if(!input.trim()){ setStatus('Please enter some text first.','error'); return; }
+  try {
+    let result;
+    if(mode === 'encode'){
+      result = btoa(unescape(encodeURIComponent(input)));
+    } else {
+      // Validate base64
+      if(!/^[A-Za-z0-9+/]*={0,2}$/.test(input.trim())){
+        setStatus('Invalid Base64 string. Make sure it only contains A-Z, a-z, 0-9, +, / and = characters.','error');
+        return;
+      }
+      result = decodeURIComponent(escape(atob(input.trim())));
+    }
+    document.getElementById('outputText').value = result;
+    document.getElementById('outputArea').style.display = 'block';
+    setStatus(mode==='encode' ? 'Encoded successfully ✓' : 'Decoded successfully ✓','success');
+  } catch(e){
+    setStatus((mode==='encode'?'Encoding':'Decoding')+' failed: '+e.message,'error');
+  }
+}
+
+function autoProcess(){
+  // Auto-process if there's content
+  if(document.getElementById('inputText').value.trim()){
+    process();
+  } else {
+    document.getElementById('outputArea').style.display='none';
+    setStatus('');
+  }
+}
+
+function swapText(){
+  const output = document.getElementById('outputText').value;
+  if(!output){ setStatus('Nothing to swap.','error'); return; }
+  document.getElementById('inputText').value = output;
+  document.getElementById('outputText').value = '';
+  document.getElementById('outputArea').style.display='none';
+  // Switch mode
+  switchTab(mode==='encode'?'decode':'encode');
+  process();
+}
+
+function clearAll(){
+  document.getElementById('inputText').value='';
+  document.getElementById('outputText').value='';
+  document.getElementById('outputArea').style.display='none';
+  setStatus('');
+}
+
+async function copyOutput(){
+  const text = document.getElementById('outputText').value;
+  if(!text){ setStatus('Nothing to copy.','error'); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus('Copied to clipboard!','success');
+  } catch(e){
+    document.getElementById('outputText').select();
+    setStatus('Text selected — press Ctrl+C to copy.','');
+  }
+  setTimeout(()=>setStatus(''),2000);
+}
+
+function setStatus(msg,type){
+  const s=document.getElementById('status');
+  s.textContent=msg; s.className='status-msg'+(type?' '+type:'');
+}
+</script>
+</body></html>

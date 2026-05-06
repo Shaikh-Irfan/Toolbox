@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Toolbox</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-logo">Toolbox.</div>
+    <div class="lock-sub">Admin access only</div>
+    <div class="admin-field" style="margin-bottom:1rem">
+      <label class="admin-label">Password</label>
+      <input type="password" class="admin-input" id="pwInput" placeholder="Enter password" onkeydown="if(event.key==='Enter')unlock()">
+    </div>
+    <button class="btn-primary" style="width:100%;justify-content:center" onclick="unlock()">Enter Admin</button>
+    <div class="status-msg error" id="pwError" style="margin-top:0.75rem;min-height:1em"></div>
+  </div>
+</div>
+
+<!-- ADMIN CONTENT (hidden until unlocked) -->
+<div id="adminContent" style="display:none">
+
+<nav>
+  <a href="index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="updates.html" target="_blank">↗ View Updates Page</a></li>
+    <li><a href="index.html">← Back to Site</a></li>
+    <li><a href="#" onclick="logout()" style="color:#ff7878">Logout</a></li>
+  </ul>
+</nav>
+
+<div class="admin-wrap">
+
+  <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.4rem">
+    <div class="admin-title">Admin Panel</div>
+    <span class="update-badge badge-new" style="margin-top:0.3rem">Logged In</span>
+  </div>
+  <div class="admin-sub">Create posts for your Updates page. Fill the form → Generate HTML → Paste into updates.html</div>
+
+  <!-- STATS -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.75rem;margin-bottom:3rem">
+    <div style="padding:1.25rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px">
+      <div style="font-family:var(--serif);font-size:1.8rem;color:var(--text)">6</div>
+      <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:0.2rem">Categories</div>
+    </div>
+    <div style="padding:1.25rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px">
+      <div style="font-family:var(--serif);font-size:1.8rem;color:var(--text)">31+</div>
+      <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:0.2rem">Total Tools</div>
+    </div>
+    <div style="padding:1.25rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px">
+      <div style="font-family:var(--serif);font-size:1.8rem;color:var(--text)" id="adminPostCount">—</div>
+      <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:0.2rem">Posts Generated</div>
+    </div>
+  </div>
+
+  <!-- POST CREATOR -->
+  <div class="admin-section">
+    <div class="admin-section-title">Create New Post</div>
+    <div class="admin-form">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="admin-field">
+          <label class="admin-label">Post Title *</label>
+          <input type="text" class="admin-input" id="postTitle" placeholder="e.g. Word Counter Tool Launched">
+        </div>
+        <div class="admin-field">
+          <label class="admin-label">Date</label>
+          <input type="text" class="admin-input" id="postDate" placeholder="e.g. 03 May 2026">
+        </div>
+      </div>
+
+      <div class="admin-field">
+        <label class="admin-label">Description *</label>
+        <textarea class="admin-textarea" id="postDesc" placeholder="Describe the update, new tool, or upcoming feature in 1-3 sentences..."></textarea>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="admin-field">
+          <label class="admin-label">Badge Type</label>
+          <select class="admin-select" id="postType">
+            <option value="new">🟢 New Tool</option>
+            <option value="update">🟡 Update</option>
+            <option value="soon">🟣 Coming Soon</option>
+            <option value="fix">🔴 Bug Fix</option>
+          </select>
+        </div>
+        <div class="admin-field">
+          <label class="admin-label">Link (optional)</label>
+          <input type="text" class="admin-input" id="postLink" placeholder="e.g. tools/word-counter.html">
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:0.5rem">
+        <button class="btn-primary" onclick="generatePost()">Generate HTML Post</button>
+        <button class="btn-secondary" onclick="clearForm()">Clear Form</button>
+      </div>
+    </div>
+
+    <!-- GENERATED OUTPUT -->
+    <div id="outputArea" style="display:none;margin-top:2rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+        <div class="admin-label">Generated HTML — Copy & Paste into updates.html</div>
+        <button class="btn-secondary" style="padding:0.4rem 0.85rem;font-size:0.7rem" onclick="copyCode()">📋 Copy</button>
+      </div>
+      <div class="code-box show" id="codeOutput"></div>
+
+      <!-- PASTE INSTRUCTIONS -->
+      <div class="paste-instructions show" style="margin-top:1rem">
+        <strong style="color:var(--text);display:block;margin-bottom:0.5rem">📋 How to publish this post:</strong>
+        1. Open your <code style="color:#6bffb8">updates.html</code> file in any text editor (VS Code, Notepad, etc.)<br>
+        2. Find the line that says <code style="color:#6bffb8">&lt;!-- ===================== POSTS START ===================== --&gt;</code><br>
+        3. Paste the copied HTML <strong>directly below</strong> that line<br>
+        4. Save the file — your post is now live! 🎉<br><br>
+        <span style="opacity:0.6">To reorder posts: move the HTML block up or down in the file. The topmost post shows first.</span>
+      </div>
+
+      <!-- LIVE PREVIEW -->
+      <div style="margin-top:1.5rem">
+        <div class="admin-label" style="margin-bottom:0.75rem">Live Preview</div>
+        <div style="border:0.5px solid var(--card-border);border-radius:4px;overflow:hidden">
+          <div class="update-card" id="previewCard" style="margin:0;padding:1.5rem 1.5rem">
+            <div class="update-meta">
+              <span class="update-date" id="pvDate"></span>
+              <span class="update-badge" id="pvBadge"></span>
+            </div>
+            <div class="update-body">
+              <div class="update-title" id="pvTitle"></div>
+              <div class="update-desc" id="pvDesc"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK REFERENCE -->
+  <div class="admin-section" style="margin-top:3rem">
+    <div class="admin-section-title">Quick Reference — All Tool Pages</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.5rem">
+      <div style="padding:0.75rem 1rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:3px;font-size:0.78rem">
+        <div style="color:var(--muted);font-size:0.65rem;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.3rem">File Converter</div>
+        <code style="color:var(--text);font-size:0.72rem">file-converter.html</code>
+      </div>
+      <div style="padding:0.75rem 1rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:3px;font-size:0.78rem">
+        <div style="color:var(--muted);font-size:0.65rem;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.3rem">Image & Design</div>
+        <code style="color:var(--text);font-size:0.72rem">image-tools.html</code>
+      </div>
+      <div style="padding:0.75rem 1rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:3px;font-size:0.78rem">
+        <div style="color:var(--muted);font-size:0.65rem;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.3rem">Finance</div>
+        <code style="color:var(--text);font-size:0.72rem">finance.html</code>
+      </div>
+      <div style="padding:0.75rem 1rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:3px;font-size:0.78rem">
+        <div style="color:var(--muted);font-size:0.65rem;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.3rem">Text Tools</div>
+        <code style="color:var(--text);font-size:0.72rem">text-tools.html</code>
+      </div>
+      <div style="padding:0.75rem 1rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:3px;font-size:0.78rem">
+        <div style="color:var(--muted);font-size:0.65rem;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.3rem">Study & Exam</div>
+        <code style="color:var(--text);font-size:0.72rem">exam-tools.html</code>
+      </div>
+      <div style="padding:0.75rem 1rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:3px;font-size:0.78rem">
+        <div style="color:var(--muted);font-size:0.65rem;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.3rem">Resume & Career</div>
+        <code style="color:var(--text);font-size:0.72rem">resume.html</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHANGE PASSWORD -->
+  <div class="admin-section" style="margin-top:3rem">
+    <div class="admin-section-title">Change Admin Password</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;max-width:480px">
+      <div class="admin-field">
+        <label class="admin-label">New Password</label>
+        <input type="password" class="admin-input" id="newPw" placeholder="Enter new password">
+      </div>
+      <div class="admin-field">
+        <label class="admin-label">Confirm Password</label>
+        <input type="password" class="admin-input" id="confirmPw" placeholder="Repeat new password">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="changePassword()">Update Password</button>
+    </div>
+    <div class="status-msg" id="pwChangeMsg"></div>
+  </div>
+
+</div><!-- end admin-wrap -->
+</div><!-- end adminContent -->
+
+<script>
+// ── Auth ──────────────────────────────────────────────────────
+const DEFAULT_PW = 'toolbox2026';
+let postCount = parseInt(localStorage.getItem('tb_postCount') || '0');
+document.getElementById('adminPostCount').textContent = postCount;
+
+function getStoredPw() {
+  return localStorage.getItem('tb_admin_pw') || DEFAULT_PW;
+}
+
+function unlock() {
+  const val = document.getElementById('pwInput').value;
+  if (val === getStoredPw()) {
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('adminContent').style.display = 'block';
+    // Set today's date as default
+    const now = new Date();
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    document.getElementById('postDate').value = `${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  } else {
+    document.getElementById('pwError').textContent = 'Incorrect password. Try again.';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').focus();
+  }
+}
+
+function logout() {
+  document.getElementById('lockScreen').style.display = 'flex';
+  document.getElementById('adminContent').style.display = 'none';
+  document.getElementById('pwInput').value = '';
+}
+
+function changePassword() {
+  const np = document.getElementById('newPw').value;
+  const cp = document.getElementById('confirmPw').value;
+  const msg = document.getElementById('pwChangeMsg');
+  if (!np) { msg.textContent = 'Please enter a new password'; msg.className = 'status-msg error'; return; }
+  if (np !== cp) { msg.textContent = 'Passwords do not match'; msg.className = 'status-msg error'; return; }
+  if (np.length < 6) { msg.textContent = 'Password must be at least 6 characters'; msg.className = 'status-msg error'; return; }
+  localStorage.setItem('tb_admin_pw', np);
+  msg.textContent = 'Password updated successfully!';
+  msg.className = 'status-msg success';
+  document.getElementById('newPw').value = '';
+  document.getElementById('confirmPw').value = '';
+}
+
+// ── Post Generator ────────────────────────────────────────────
+const BADGE_MAP = {
+  new:    { cls: 'badge-new',    label: 'New Tool' },
+  update: { cls: 'badge-update', label: 'Update' },
+  soon:   { cls: 'badge-soon',   label: 'Coming Soon' },
+  fix:    { cls: 'badge-fix',    label: 'Bug Fix' }
+};
+
+function generatePost() {
+  const title = document.getElementById('postTitle').value.trim();
+  const desc  = document.getElementById('postDesc').value.trim();
+  const date  = document.getElementById('postDate').value.trim();
+  const type  = document.getElementById('postType').value;
+  const link  = document.getElementById('postLink').value.trim();
+
+  if (!title) { alert('Please enter a post title.'); return; }
+  if (!desc)  { alert('Please enter a description.'); return; }
+
+  const badge = BADGE_MAP[type];
+  const dateDisplay = date || 'No date';
+
+  // Build HTML snippet
+  const linkOpen  = link ? `<a href="${link}" class="update-card" data-type="${type}">` : `<div class="update-card" data-type="${type}">`;
+  const linkClose = link ? `</a>` : `</div>`;
+
+  const html =
+`${linkOpen}
+  <div class="update-meta">
+    <span class="update-date">${escHtml(dateDisplay)}</span>
+    <span class="update-badge ${badge.cls}">${badge.label}</span>
+  </div>
+  <div class="update-body">
+    <div class="update-title">${escHtml(title)}</div>
+    <div class="update-desc">${escHtml(desc)}</div>
+  </div>
+  <span class="update-arrow">→</span>
+${linkClose}`;
+
+  document.getElementById('codeOutput').textContent = html;
+  document.getElementById('outputArea').style.display = 'block';
+
+  // Update live preview
+  document.getElementById('pvDate').textContent = dateDisplay;
+  document.getElementById('pvBadge').textContent = badge.label;
+  document.getElementById('pvBadge').className = `update-badge ${badge.cls}`;
+  document.getElementById('pvTitle').textContent = title;
+  document.getElementById('pvDesc').textContent = desc;
+
+  // Count
+  postCount++;
+  localStorage.setItem('tb_postCount', postCount);
+  document.getElementById('adminPostCount').textContent = postCount;
+
+  document.getElementById('outputArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function copyCode() {
+  const code = document.getElementById('codeOutput').textContent;
+  try {
+    await navigator.clipboard.writeText(code);
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  } catch(e) {
+    // Fallback: select text
+    const range = document.createRange();
+    range.selectNode(document.getElementById('codeOutput'));
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+  }
+}
+
+function clearForm() {
+  document.getElementById('postTitle').value = '';
+  document.getElementById('postDesc').value = '';
+  document.getElementById('postLink').value = '';
+  document.getElementById('postType').value = 'new';
+  document.getElementById('outputArea').style.display = 'none';
+}
+</script>
+
+</body>
+</html>

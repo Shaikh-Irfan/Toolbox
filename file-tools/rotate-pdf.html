@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rotate PDF — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../file-converter.html">← File Converter</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../file-converter.html">File Converter</a><span>/</span><span>Rotate PDF</span></div>
+  <h1 class="page-title">Rotate PDF</h1>
+  <p class="page-desc">Rotate all pages or specific pages of your PDF to the correct orientation.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept=".pdf">
+    <div class="drop-icon">🔄</div>
+    <div class="drop-title">Drop your PDF here</div>
+    <div class="drop-sub">or click to browse</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">📑</div>
+    <div class="file-info-text">
+      <div class="file-info-name" id="fname"></div>
+      <div class="file-info-size" id="fsize"></div>
+    </div>
+    <button class="file-remove" onclick="resetFile()">✕</button>
+  </div>
+  <div id="opts" style="display:none">
+    <div class="options-row">
+      <div class="option-group">
+        <div class="option-label">Rotation</div>
+        <select class="option-select" id="rotation">
+          <option value="90">90° Clockwise</option>
+          <option value="180">180° (upside down)</option>
+          <option value="270">90° Counter-clockwise</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <div class="option-label">Apply to</div>
+        <select class="option-select" id="applyTo">
+          <option value="all">All pages</option>
+          <option value="odd">Odd pages only</option>
+          <option value="even">Even pages only</option>
+        </select>
+      </div>
+    </div>
+    <div class="status-msg" id="pageInfo" style="margin-bottom:0.5rem"></div>
+  </div>
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="btn-row">
+    <button class="btn-primary" id="rotateBtn" onclick="rotate()" disabled>Rotate PDF</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div class="result-box" id="result">
+    <div class="result-label">Rotation complete</div>
+    <div class="result-stat" id="resultStat"></div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-primary" id="dlBtn">⬇ Download Rotated PDF</button>
+      <button class="btn-secondary" onclick="resetFile()">Rotate another</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script>
+let currentFile = null;
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+async function handleFile(f) {
+  if (!f || !f.name.match(/\.pdf$/i)) { setStatus('Please upload a PDF', 'error'); return; }
+  currentFile = f;
+  document.getElementById('fname').textContent = f.name;
+  document.getElementById('fsize').textContent = formatSize(f.size);
+  document.getElementById('fileInfo').style.display = 'flex';
+  dz.style.display = 'none';
+  const ab = await f.arrayBuffer();
+  const pdf = await PDFLib.PDFDocument.load(ab);
+  document.getElementById('pageInfo').textContent = `${pdf.getPageCount()} pages detected`;
+  document.getElementById('opts').style.display = 'block';
+  document.getElementById('rotateBtn').disabled = false;
+}
+
+function resetFile() {
+  currentFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('opts').style.display = 'none';
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('prog').classList.remove('active');
+  dz.style.display = 'block';
+  document.getElementById('rotateBtn').disabled = true;
+  setStatus('');
+}
+
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+async function rotate() {
+  if (!currentFile) return;
+  document.getElementById('rotateBtn').disabled = true;
+  const prog=document.getElementById('prog'); const fill=document.getElementById('progFill');
+  prog.classList.add('active'); fill.style.width='20%';
+  const deg = parseInt(document.getElementById('rotation').value);
+  const applyTo = document.getElementById('applyTo').value;
+  setStatus('Rotating...');
+  try {
+    const ab = await currentFile.arrayBuffer();
+    const pdf = await PDFLib.PDFDocument.load(ab);
+    const pages = pdf.getPages();
+    pages.forEach((page, i) => {
+      const pageNum = i + 1;
+      if (applyTo === 'all' || (applyTo === 'odd' && pageNum%2!==0) || (applyTo === 'even' && pageNum%2===0)) {
+        page.setRotation(PDFLib.degrees((page.getRotation().angle + deg) % 360));
+      }
+    });
+    fill.style.width='80%';
+    const bytes = await pdf.save();
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    fill.style.width='100%';
+    setTimeout(()=>prog.classList.remove('active'),400);
+    const name = currentFile.name.replace(/\.pdf$/i,'-rotated.pdf');
+    document.getElementById('resultStat').textContent = name;
+    document.getElementById('resultSub').textContent = `${pages.length} pages · rotated ${deg}°`;
+    document.getElementById('dlBtn').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);};
+    document.getElementById('result').classList.add('show');
+    setStatus('Done!','success');
+  } catch(e) {
+    setStatus('Failed: '+e.message,'error');
+    prog.classList.remove('active');
+  }
+  document.getElementById('rotateBtn').disabled = false;
+}
+</script>
+</body></html>

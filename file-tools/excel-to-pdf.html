@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel to PDF — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.preview-table { width:100%; border-collapse:collapse; font-size:0.78rem; margin-bottom:1.25rem; overflow-x:auto; display:block; }
+.preview-table th { background:rgba(255,255,255,0.06); color:var(--text); padding:0.5rem 0.7rem; border:0.5px solid var(--card-border); text-align:left; font-weight:400; letter-spacing:0.04em; }
+.preview-table td { color:var(--muted); padding:0.45rem 0.7rem; border:0.5px solid rgba(255,255,255,0.04); }
+.preview-table tr:hover td { color:var(--text); }
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../file-converter.html">← File Converter</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../file-converter.html">File Converter</a><span>/</span><span>Excel to PDF</span></div>
+  <h1 class="page-title">Excel to PDF</h1>
+  <p class="page-desc">Upload your .xlsx file to preview the data, then print/save as PDF via the browser print dialog.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+    <div class="drop-icon">📉</div>
+    <div class="drop-title">Drop your Excel file here</div>
+    <div class="drop-sub">.xlsx, .xls, .csv supported</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">📊</div>
+    <div class="file-info-text"><div class="file-info-name" id="fname"></div><div class="file-info-size" id="fsize"></div></div>
+    <button class="file-remove" onclick="resetFile()">✕</button>
+  </div>
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="status-msg" id="status"></div>
+  <div id="previewArea" style="display:none">
+    <div class="options-row" style="margin-bottom:0.75rem">
+      <div class="option-group">
+        <div class="option-label">Sheet</div>
+        <select class="option-select" id="sheetSel" onchange="renderSheet()"></select>
+      </div>
+    </div>
+    <div id="tableWrap"></div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="printAsPdf()">🖨 Print / Save as PDF</button>
+      <button class="btn-secondary" onclick="resetFile()">Load another</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+let wb=null;
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+async function handleFile(f){
+  if(!f){return;}
+  document.getElementById('fname').textContent=f.name;
+  document.getElementById('fsize').textContent=formatSize(f.size);
+  document.getElementById('fileInfo').style.display='flex';
+  dz.style.display='none';
+  const prog=document.getElementById('prog');const fill=document.getElementById('progFill');
+  prog.classList.add('active');fill.style.width='40%';
+  setStatus('Reading file...');
+  const ab=await f.arrayBuffer();
+  fill.style.width='80%';
+  wb=XLSX.read(ab,{type:'array'});
+  const sel=document.getElementById('sheetSel');
+  sel.innerHTML='';
+  wb.SheetNames.forEach((name,i)=>{
+    const opt=document.createElement('option');
+    opt.value=i;opt.textContent=name;
+    sel.appendChild(opt);
+  });
+  fill.style.width='100%';
+  setTimeout(()=>prog.classList.remove('active'),400);
+  document.getElementById('previewArea').style.display='block';
+  renderSheet();
+  setStatus('');
+}
+
+function renderSheet(){
+  const idx=parseInt(document.getElementById('sheetSel').value);
+  const ws=wb.Sheets[wb.SheetNames[idx]];
+  const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+  if(!data.length){document.getElementById('tableWrap').innerHTML='<p style="color:var(--muted);font-size:0.82rem">Sheet is empty</p>';return;}
+  let html='<div style="overflow-x:auto;margin-bottom:1rem"><table class="preview-table"><thead><tr>';
+  data[0].forEach(cell=>{ html+=`<th>${cell||''}</th>`; });
+  html+='</tr></thead><tbody>';
+  data.slice(1,51).forEach(row=>{ html+='<tr>'; row.forEach(cell=>{ html+=`<td>${cell!==null&&cell!==undefined?cell:''}</td>`; }); html+='</tr>'; });
+  html+='</tbody></table></div>';
+  if(data.length>52)html+=`<p style="font-size:0.72rem;color:var(--muted);margin-bottom:1rem">Showing first 50 rows of ${data.length-1}</p>`;
+  document.getElementById('tableWrap').innerHTML=html;
+}
+
+function resetFile(){
+  wb=null;
+  document.getElementById('fileInput').value='';
+  document.getElementById('fileInfo').style.display='none';
+  document.getElementById('previewArea').style.display='none';
+  dz.style.display='block';
+  setStatus('');
+}
+
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+function printAsPdf(){
+  const idx=parseInt(document.getElementById('sheetSel').value);
+  const ws=wb.Sheets[wb.SheetNames[idx]];
+  const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+  let rows='<tr>'+data[0].map(c=>`<th>${c}</th>`).join('')+'</tr>';
+  data.slice(1).forEach(row=>{ rows+='<tr>'+row.map(c=>`<td>${c!==null&&c!==undefined?c:''}</td>`).join('')+'</tr>'; });
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+    body{font-family:Arial,sans-serif;font-size:10pt;margin:20px}
+    table{border-collapse:collapse;width:100%}
+    th{background:#f0f0f0;padding:6px 8px;border:1px solid #ccc;text-align:left;font-weight:600}
+    td{padding:5px 8px;border:1px solid #e0e0e0}
+    tr:nth-child(even) td{background:#f9f9f9}
+  </style></head><body>${rows?`<table><thead>${rows}</thead></table>`:''}</body></html>`;
+  const win=window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(()=>{win.print();win.close();},500);
+}
+</script>
+</body></html>

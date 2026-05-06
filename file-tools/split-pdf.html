@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Split PDF — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../file-converter.html">← File Converter</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../file-converter.html">File Converter</a><span>/</span><span>Split PDF</span></div>
+  <h1 class="page-title">Split PDF</h1>
+  <p class="page-desc">Extract specific pages or ranges from your PDF. Enter page numbers and download separate files.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept=".pdf">
+    <div class="drop-icon">✂️</div>
+    <div class="drop-title">Drop your PDF here</div>
+    <div class="drop-sub">or click to browse</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">📑</div>
+    <div class="file-info-text">
+      <div class="file-info-name" id="fname"></div>
+      <div class="file-info-size" id="fsize"></div>
+    </div>
+    <button class="file-remove" onclick="resetFile()">✕</button>
+  </div>
+  <div id="opts" style="display:none">
+    <div class="options-row">
+      <div class="option-group">
+        <div class="option-label">Split mode</div>
+        <select class="option-select" id="mode" onchange="toggleMode()">
+          <option value="all">Split every page into separate files</option>
+          <option value="range">Extract a specific page range</option>
+        </select>
+      </div>
+    </div>
+    <div id="rangeOpts" style="display:none">
+      <div class="options-row">
+        <div class="option-group">
+          <div class="option-label">From page</div>
+          <input type="number" class="option-input" id="fromPage" value="1" min="1" style="min-width:80px">
+        </div>
+        <div class="option-group">
+          <div class="option-label">To page</div>
+          <input type="number" class="option-input" id="toPage" value="1" min="1" style="min-width:80px">
+        </div>
+      </div>
+    </div>
+    <div class="status-msg" id="pageInfo" style="margin-bottom:1rem"></div>
+  </div>
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="btn-row">
+    <button class="btn-primary" id="splitBtn" onclick="split()" disabled>Split PDF</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div class="result-box" id="result">
+    <div class="result-label">Split complete</div>
+    <div class="result-stat" id="resultStat"></div>
+    <div class="result-sub" id="resultSub"></div>
+    <div id="dlList" class="multi-drop-list" style="margin-top:1rem"></div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-secondary" onclick="resetFile()">Split another</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script>
+let currentFile = null, totalPages = 0, blobStore = [];
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+async function handleFile(f) {
+  if (!f || !f.name.match(/\.pdf$/i)) { setStatus('Please upload a PDF file', 'error'); return; }
+  currentFile = f;
+  document.getElementById('fname').textContent = f.name;
+  document.getElementById('fsize').textContent = formatSize(f.size);
+  document.getElementById('fileInfo').style.display = 'flex';
+  dz.style.display = 'none';
+  setStatus('Reading PDF...');
+  const ab = await f.arrayBuffer();
+  const pdf = await PDFLib.PDFDocument.load(ab);
+  totalPages = pdf.getPageCount();
+  document.getElementById('pageInfo').textContent = `This PDF has ${totalPages} page${totalPages>1?'s':''}`;
+  document.getElementById('toPage').value = totalPages;
+  document.getElementById('toPage').max = totalPages;
+  document.getElementById('fromPage').max = totalPages;
+  document.getElementById('opts').style.display = 'block';
+  document.getElementById('splitBtn').disabled = false;
+  setStatus('');
+}
+
+function toggleMode() {
+  const range = document.getElementById('mode').value === 'range';
+  document.getElementById('rangeOpts').style.display = range ? 'block' : 'none';
+}
+
+function resetFile() {
+  currentFile = null; totalPages = 0; blobStore = [];
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('opts').style.display = 'none';
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('prog').classList.remove('active');
+  dz.style.display = 'block';
+  document.getElementById('splitBtn').disabled = true;
+  setStatus('');
+}
+
+function formatSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+function setStatus(msg, type) {
+  const s = document.getElementById('status');
+  s.textContent = msg; s.className = 'status-msg' + (type ? ' ' + type : '');
+}
+
+async function split() {
+  if (!currentFile) return;
+  document.getElementById('splitBtn').disabled = true;
+  const prog = document.getElementById('prog');
+  const fill = document.getElementById('progFill');
+  prog.classList.add('active'); fill.style.width = '10%';
+  const mode = document.getElementById('mode').value;
+  const ab = await currentFile.arrayBuffer();
+  const srcPdf = await PDFLib.PDFDocument.load(ab);
+  const dlList = document.getElementById('dlList');
+  dlList.innerHTML = '';
+  const blobs = [];
+  try {
+    if (mode === 'all') {
+      for (let i = 0; i < totalPages; i++) {
+        fill.style.width = (10 + ((i+1)/totalPages)*80) + '%';
+        setStatus(`Extracting page ${i+1} of ${totalPages}...`);
+        const newPdf = await PDFLib.PDFDocument.create();
+        const [page] = await newPdf.copyPages(srcPdf, [i]);
+        newPdf.addPage(page);
+        const bytes = await newPdf.save();
+        blobs.push({ name: `page-${i+1}.pdf`, blob: new Blob([bytes], { type:'application/pdf' }) });
+      }
+    } else {
+      const from = Math.max(1, parseInt(document.getElementById('fromPage').value));
+      const to = Math.min(totalPages, parseInt(document.getElementById('toPage').value));
+      if (from > to) { setStatus('From page must be ≤ To page', 'error'); prog.classList.remove('active'); document.getElementById('splitBtn').disabled=false; return; }
+      const indices = [];
+      for (let i = from-1; i < to; i++) indices.push(i);
+      const newPdf = await PDFLib.PDFDocument.create();
+      const pages = await newPdf.copyPages(srcPdf, indices);
+      pages.forEach(p => newPdf.addPage(p));
+      const bytes = await newPdf.save();
+      blobs.push({ name: `pages-${from}-${to}.pdf`, blob: new Blob([bytes], { type:'application/pdf' }) });
+    }
+    fill.style.width = '100%';
+    blobStore = blobs;
+    blobs.forEach(({ name, blob }, idx) => {
+      const div = document.createElement('div');
+      div.className = 'file-info';
+      const btn = document.createElement('button');
+      btn.className = 'btn-secondary';
+      btn.style.cssText = 'padding:0.4rem 0.8rem;font-size:0.72rem';
+      btn.textContent = '⬇';
+      btn.addEventListener('click', () => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blobStore[idx].blob);
+        a.download = blobStore[idx].name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+      div.innerHTML = `<div class="file-info-icon">📑</div>
+        <div class="file-info-text"><div class="file-info-name">${name}</div><div class="file-info-size">${formatSize(blob.size)}</div></div>`;
+      div.appendChild(btn);
+      dlList.appendChild(div);
+    });
+    setTimeout(() => prog.classList.remove('active'), 400);
+    document.getElementById('resultStat').textContent = `${blobs.length} file${blobs.length>1?'s':''} created`;
+    document.getElementById('resultSub').textContent = `Click the download button next to each file`;
+    document.getElementById('result').classList.add('show');
+    setStatus('Done!', 'success');
+  } catch(e) {
+    setStatus('Failed: ' + e.message, 'error');
+    prog.classList.remove('active');
+  }
+  document.getElementById('splitBtn').disabled = false;
+}
+</script>
+</body></html>

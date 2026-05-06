@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Currency Converter — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.swap-btn{background:var(--card-bg);border:0.5px solid var(--card-border);color:var(--text);width:42px;height:42px;border-radius:50%;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;transition:border-color 0.2s,transform 0.2s;flex-shrink:0}
+.swap-btn:hover{border-color:rgba(255,255,255,0.3);transform:rotate(180deg)}
+.result-big{font-family:var(--serif);font-size:2.4rem;color:#6bffb8;margin:1.5rem 0 0.3rem}
+.rate-info{font-size:0.78rem;color:var(--muted);margin-bottom:1.5rem}
+.quick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.5rem;margin-top:1.5rem}
+.quick-card{padding:0.85rem 1rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px}
+.qc-label{font-size:0.62rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:0.2rem}
+.qc-value{font-size:0.9rem;color:var(--text)}
+.quick-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:0.75rem; margin-top:1.5rem; }
+.quick-card { padding:1rem; background:var(--card-bg); border:0.5px solid var(--card-border); border-radius:4px; text-align:center; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../finance.html">← Finance</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../finance.html">Finance</a><span>/</span><span>Currency Converter</span></div>
+  <h1 class="page-title">Currency Converter</h1>
+  <p class="page-desc">Live exchange rates for 150+ currencies. Powered by the free ExchangeRate-API.</p>
+</div>
+<div class="tool-workspace" style="max-width:600px">
+  <div style="display:flex;align-items:flex-end;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.25rem">
+    <div class="option-group" style="flex:1;min-width:120px">
+      <div class="option-label">Amount</div>
+      <input type="number" class="option-input" id="amount" value="1" min="0" oninput="convert()" style="width:100%">
+    </div>
+    <div class="option-group" style="flex:1;min-width:120px">
+      <div class="option-label">From</div>
+      <select class="option-select" id="fromCur" onchange="fetchRates()" style="width:100%"></select>
+    </div>
+    <button class="swap-btn" onclick="swapCurrencies()" title="Swap">⇄</button>
+    <div class="option-group" style="flex:1;min-width:120px">
+      <div class="option-label">To</div>
+      <select class="option-select" id="toCur" onchange="convert()" style="width:100%"></select>
+    </div>
+  </div>
+
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="status-msg" id="status"></div>
+
+  <div id="resultArea" style="display:none">
+    <div class="result-big" id="resultBig">—</div>
+    <div class="rate-info" id="rateInfo"></div>
+    <div style="padding:1rem 1.25rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px;font-size:0.78rem;color:var(--muted)" id="lastUpdated"></div>
+    <div class="quick-grid" id="quickGrid"></div>
+  </div>
+
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+const CURRENCIES = [
+  'USD','EUR','GBP','INR','JPY','CAD','AUD','CHF','CNY','HKD','SGD','AED','SAR',
+  'MYR','THB','IDR','PKR','BDT','LKR','NPR','KRW','NZD','ZAR','BRL','MXN',
+  'RUB','TRY','SEK','NOK','DKK','PLN','CZK','HUF','RON','BGN','HRK','ISK',
+  'EGP','NGN','KES','GHS','MAD','TND','DZD','QAR','KWD','BHD','OMR','JOD',
+  'ILS','UAH','KZT','ARS','CLP','COP','PEN','VND','PHP','TWD','MMK'
+];
+
+let rates = {};
+let baseCurrency = 'USD';
+
+function populateSelects(){
+  const from = document.getElementById('fromCur');
+  const to = document.getElementById('toCur');
+  CURRENCIES.forEach(c => {
+    from.innerHTML += `<option value="${c}" ${c==='USD'?'selected':''}>${c}</option>`;
+    to.innerHTML += `<option value="${c}" ${c==='INR'?'selected':''}>${c}</option>`;
+  });
+}
+
+async function fetchRates(){
+  const from = document.getElementById('fromCur').value;
+  if(from === baseCurrency && Object.keys(rates).length > 0){ convert(); return; }
+  const prog = document.getElementById('prog');
+  const fill = document.getElementById('progFill');
+  prog.classList.add('active'); fill.style.width = '40%';
+  document.getElementById('status').textContent = 'Fetching live rates...';
+  document.getElementById('resultArea').style.display = 'none';
+  try {
+    const res = await fetch(`https://open.er-api.com/v6/latest/${from}`);
+    if(!res.ok) throw new Error('API error ' + res.status);
+    const data = await res.json();
+    if(data.result !== 'success') throw new Error('Rate fetch failed');
+    rates = data.rates;
+    baseCurrency = from;
+    fill.style.width = '100%';
+    setTimeout(() => prog.classList.remove('active'), 400);
+    document.getElementById('status').textContent = '';
+    document.getElementById('lastUpdated').textContent =
+      `Rates updated: ${new Date(data.time_last_update_utc).toLocaleString('en-IN')} · Source: ExchangeRate-API (free tier)`;
+    convert();
+  } catch(e) {
+    fill.style.width = '0%';
+    prog.classList.remove('active');
+    document.getElementById('status').textContent = 'Could not fetch live rates. Please check your internet connection.';
+    document.getElementById('status').className = 'status-msg error';
+  }
+}
+
+function convert(){
+  const to = document.getElementById('toCur').value;
+  const amt = parseFloat(document.getElementById('amount').value) || 0;
+  if(!rates[to]) return;
+  const result = amt * rates[to];
+  const rate = rates[to];
+  document.getElementById('resultBig').textContent =
+    `${amt.toLocaleString()} ${baseCurrency} = ${result.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4})} ${to}`;
+  document.getElementById('rateInfo').textContent =
+    `1 ${baseCurrency} = ${rate.toFixed(4)} ${to}   ·   1 ${to} = ${(1/rate).toFixed(4)} ${baseCurrency}`;
+  document.getElementById('resultArea').style.display = 'block';
+
+  // Quick conversions for popular currencies
+  const popular = ['USD','EUR','GBP','INR','JPY','AED','SGD','AUD'].filter(c => c !== baseCurrency);
+  let qHtml = '';
+  popular.forEach(c => {
+    if(rates[c]){
+      const val = (amt * rates[c]).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+      qHtml += `<div class="quick-card"><div class="qc-label">${c}</div><div class="qc-value">${val}</div></div>`;
+    }
+  });
+  document.getElementById('quickGrid').innerHTML = qHtml;
+}
+
+function swapCurrencies(){
+  const from = document.getElementById('fromCur');
+  const to = document.getElementById('toCur');
+  const tmp = from.value;
+  from.value = to.value;
+  to.value = tmp;
+  fetchRates();
+}
+
+populateSelects();
+fetchRates();
+</script>
+</body></html>

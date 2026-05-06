@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Updates — Toolbox</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="index.html#tools">Tools</a></li>
+    <li><a href="updates.html" style="color:var(--text)">Updates</a></li>
+    <li><a href="#">About</a></li>
+  </ul>
+</nav>
+
+<div class="updates-hero">
+  <div class="breadcrumb">
+    <a href="index.html">Home</a><span>/</span><span>Updates</span>
+  </div>
+  <h1 class="page-title">News & Updates</h1>
+  <p class="page-desc">New tools, improvements and what's coming next. This page is updated regularly.</p>
+</div>
+
+<section style="padding: 3rem 2.5rem 6rem">
+
+  <!-- STATS ROW -->
+  <div style="display:flex;gap:2.5rem;margin-bottom:3rem;padding-bottom:2rem;border-bottom:0.5px solid var(--line)">
+    <div>
+      <div style="font-family:var(--serif);font-size:1.6rem;color:var(--text)" id="totalPosts">0</div>
+      <div style="font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:0.2rem">Total Posts</div>
+    </div>
+    <div>
+      <div style="font-family:var(--serif);font-size:1.6rem;color:var(--text)" id="newCount">0</div>
+      <div style="font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:0.2rem">New Tools</div>
+    </div>
+    <div>
+      <div style="font-family:var(--serif);font-size:1.6rem;color:var(--text)" id="soonCount">0</div>
+      <div style="font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:0.2rem">Coming Soon</div>
+    </div>
+  </div>
+
+  <!-- FILTER TABS -->
+  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:2rem">
+    <button class="filter-btn active" onclick="filterPosts('all')">All</button>
+    <button class="filter-btn" onclick="filterPosts('new')">🟢 New Tool</button>
+    <button class="filter-btn" onclick="filterPosts('update')">🟡 Update</button>
+    <button class="filter-btn" onclick="filterPosts('soon')">🟣 Coming Soon</button>
+    <button class="filter-btn" onclick="filterPosts('fix')">🔴 Bug Fix</button>
+  </div>
+
+  <!-- POSTS CONTAINER -->
+  <div class="updates-grid" id="postsContainer">
+    <!-- POSTS ARE INSERTED HERE BY ADMIN -->
+    <!-- ===================== POSTS START ===================== -->
+
+    <div class="update-card" data-type="new">
+      <div class="update-meta">
+        <span class="update-date">03 May 2026</span>
+        <span class="update-badge badge-new">New Tool</span>
+      </div>
+      <div class="update-body">
+        <div class="update-title">Image & Design Tools — 15 Tools Launched</div>
+        <div class="update-desc">Compress images, remove backgrounds, generate QR codes, create passport photos, add watermarks, generate signatures and much more. All tools run entirely in your browser.</div>
+      </div>
+      <span class="update-arrow">→</span>
+    </div>
+
+    <div class="update-card" data-type="new">
+      <div class="update-meta">
+        <span class="update-date">03 May 2026</span>
+        <span class="update-badge badge-new">New Tool</span>
+      </div>
+      <div class="update-body">
+        <div class="update-title">File Converter Tools — 16 Tools Launched</div>
+        <div class="update-desc">Word to PDF, PDF to Word, Merge PDF, Split PDF, Rotate PDF, Organise PDF, image converters and more. Everything runs in your browser with no file uploads to any server.</div>
+      </div>
+      <span class="update-arrow">→</span>
+    </div>
+
+    <div class="update-card" data-type="soon">
+      <div class="update-meta">
+        <span class="update-date">Coming Soon</span>
+        <span class="update-badge badge-soon">Coming Soon</span>
+      </div>
+      <div class="update-body">
+        <div class="update-title">Finance Calculators — Launching Next</div>
+        <div class="update-desc">SIP, EMI, GST, FD, PPF, Income Tax (Old vs New Regime), Compound Interest, Currency Converter and more. Designed specifically for Indian users.</div>
+      </div>
+      <span class="update-arrow">→</span>
+    </div>
+
+    <div class="update-card" data-type="soon">
+      <div class="update-meta">
+        <span class="update-date">Coming Soon</span>
+        <span class="update-badge badge-soon">Coming Soon</span>
+      </div>
+      <div class="update-body">
+        <div class="update-title">Text Tools — Launching Soon</div>
+        <div class="update-desc">Word counter, JSON formatter, Base64 encoder, Diff checker, Regex tester, Remove duplicate lines and many more developer and writing utilities.</div>
+      </div>
+      <span class="update-arrow">→</span>
+    </div>
+
+    <!-- ====================== POSTS END ====================== -->
+  </div>
+
+  <div class="updates-empty" id="emptyMsg" style="display:none">
+    No posts in this category yet.
+  </div>
+
+</section>
+
+<footer>
+  <span class="footer-logo">Toolbox.</span>
+  <span class="footer-note">Updated regularly.</span>
+</footer>
+
+<style>
+.filter-btn {
+  padding: 0.45rem 1rem;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--muted);
+  border: 0.5px solid var(--card-border);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.filter-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+.filter-btn.active { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.2); color: var(--text); }
+</style>
+
+<script>
+// Count stats
+const cards = document.querySelectorAll('.update-card');
+document.getElementById('totalPosts').textContent = cards.length;
+document.getElementById('newCount').textContent = [...cards].filter(c => c.dataset.type === 'new').length;
+document.getElementById('soonCount').textContent = [...cards].filter(c => c.dataset.type === 'soon').length;
+
+function filterPosts(type) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  let visible = 0;
+  cards.forEach(card => {
+    const show = type === 'all' || card.dataset.type === type;
+    card.style.display = show ? 'flex' : 'none';
+    if (show) visible++;
+  });
+  document.getElementById('emptyMsg').style.display = visible === 0 ? 'block' : 'none';
+}
+</script>
+
+</body>
+</html>

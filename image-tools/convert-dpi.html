@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convert DPI — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../image-tools.html">← Image & Design</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../image-tools.html">Image & Design</a><span>/</span><span>Convert DPI</span></div>
+  <h1 class="page-title">Convert DPI</h1>
+  <p class="page-desc">Change your image DPI for print-ready output. Embeds the correct DPI metadata in the PNG file.</p>
+</div>
+<div class="tool-workspace">
+  <div style="padding:0.85rem 1.25rem;background:rgba(255,200,80,0.06);border:0.5px solid rgba(255,200,80,0.2);border-radius:4px;margin-bottom:1.5rem;font-size:0.78rem;color:rgba(240,237,230,0.7)">
+    ℹ️ DPI is metadata — it does not change pixel count, only how large the image prints. To change physical print size at a specific DPI, use <a href="resize-image.html" style="color:var(--text)">Resize Image</a> with cm/mm units.
+  </div>
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept="image/*">
+    <div class="drop-icon">🖨️</div>
+    <div class="drop-title">Drop your image here</div>
+    <div class="drop-sub">PNG or JPG — DPI metadata will be embedded</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">🖼️</div>
+    <div class="file-info-text"><div class="file-info-name" id="fname"></div><div class="file-info-size" id="fsize"></div></div>
+    <button class="file-remove" onclick="reset()">✕</button>
+  </div>
+  <div id="controls" style="display:none">
+    <div class="options-row">
+      <div class="option-group">
+        <div class="option-label">Target DPI</div>
+        <select class="option-select" id="targetDPI">
+          <option value="72">72 DPI — Screen / Web</option>
+          <option value="96">96 DPI — Screen</option>
+          <option value="150">150 DPI — Low print</option>
+          <option value="300" selected>300 DPI — Standard print</option>
+          <option value="600">600 DPI — High quality print</option>
+          <option value="custom">Custom...</option>
+        </select>
+      </div>
+      <div class="option-group" id="customDPIGroup" style="display:none">
+        <div class="option-label">Custom DPI</div>
+        <input type="number" class="option-input" id="customDPI" value="300" min="1" max="9600" style="min-width:90px">
+      </div>
+    </div>
+    <div class="status-msg" id="dimInfo" style="margin-bottom:1rem"></div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="convertDPI()">Set DPI & Download</button>
+      <button class="btn-secondary" onclick="reset()">Choose another</button>
+    </div>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div id="resultArea" style="display:none;margin-top:1.5rem">
+    <div class="result-box show">
+      <div class="result-label">DPI conversion complete</div>
+      <div class="result-stat" id="resultStat"></div>
+      <div class="result-sub" id="resultSub"></div>
+    </div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-primary" id="dlBtn">⬇ Download PNG with DPI metadata</button>
+      <button class="btn-secondary" onclick="reset()">Convert another</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+let origImg=null, origFile=null;
+
+function downloadBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),15000);}
+function loadImg(file){return new Promise((res,rej)=>{const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(url);res(img);};img.onerror=rej;img.src=url;});}
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(2)+' MB';}
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+document.getElementById('targetDPI').addEventListener('change',function(){
+  document.getElementById('customDPIGroup').style.display=this.value==='custom'?'flex':'none';
+  updateDimInfo();
+});
+
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+async function handleFile(f){
+  if(!f||!f.type.startsWith('image/')){setStatus('Please upload an image','error');return;}
+  origFile=f;origImg=await loadImg(f);
+  document.getElementById('fname').textContent=f.name;
+  document.getElementById('fsize').textContent=formatSize(f.size);
+  document.getElementById('fileInfo').style.display='flex';
+  dz.style.display='none';
+  document.getElementById('controls').style.display='block';
+  document.getElementById('resultArea').style.display='none';
+  updateDimInfo();
+}
+
+function getDPI(){
+  const sel=document.getElementById('targetDPI').value;
+  return sel==='custom'?parseInt(document.getElementById('customDPI').value)||300:parseInt(sel);
+}
+
+function updateDimInfo(){
+  if(!origImg)return;
+  const dpi=getDPI();
+  const W=origImg.naturalWidth,H=origImg.naturalHeight;
+  const wmm=+(W/dpi*25.4).toFixed(1),hmm=+(H/dpi*25.4).toFixed(1);
+  const wcm=+(wmm/10).toFixed(1),hcm=+(hmm/10).toFixed(1);
+  document.getElementById('dimInfo').textContent=`${W}×${H}px at ${dpi}DPI = ${wcm}×${hcm}cm (${wmm}×${hmm}mm) print size`;
+}
+
+document.getElementById('customDPI').addEventListener('input',updateDimInfo);
+
+function convertDPI(){
+  if(!origImg)return;
+  const dpi=getDPI();
+  if(!dpi||dpi<1){setStatus('Please enter a valid DPI','error');return;}
+  setStatus('Embedding DPI metadata...');
+  const W=origImg.naturalWidth,H=origImg.naturalHeight;
+  const canvas=document.createElement('canvas');
+  canvas.width=W;canvas.height=H;
+  canvas.getContext('2d').drawImage(origImg,0,0);
+
+  // For PNG: embed pHYs chunk with DPI (pixels per metre)
+  // ppm = dpi * 39.3701
+  canvas.toBlob(blob=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const arr=new Uint8Array(e.target.result);
+      const ppm=Math.round(dpi*39.3701);
+      const result=embedPNGpHYs(arr,ppm);
+      const finalBlob=new Blob([result],{type:'image/png'});
+      const name=(origFile.name.replace(/\.[^.]+$/,'')||'image')+`-${dpi}dpi.png`;
+      document.getElementById('resultStat').textContent=`${dpi} DPI`;
+      document.getElementById('resultSub').textContent=`${W}×${H}px · print size: ${+(W/dpi*2.54).toFixed(1)}×${+(H/dpi*2.54).toFixed(1)}cm · ${formatSize(finalBlob.size)}`;
+      document.getElementById('dlBtn').onclick=()=>downloadBlob(finalBlob,name);
+      document.getElementById('resultArea').style.display='block';
+      setStatus('DPI set and ready to download!','success');
+    };
+    reader.readAsArrayBuffer(blob);
+  },'image/png');
+}
+
+function embedPNGpHYs(data, ppm){
+  // PNG signature: 8 bytes, then IHDR chunk
+  // Insert pHYs chunk right after IHDR
+  // pHYs: 4 bytes length(9) + "pHYs" + 4 bytes X ppm + 4 bytes Y ppm + 1 byte unit(1=metre) + 4 bytes CRC
+  const sig=data.slice(0,8);
+  // Find end of IHDR chunk: sig(8) + length(4) + "IHDR"(4) + data(13) + crc(4) = 33 bytes from start
+  const afterIHDR=33;
+  const beforeIHDR=data.slice(8,afterIHDR);
+  const rest=data.slice(afterIHDR);
+  // Build pHYs chunk
+  const chunk=new Uint8Array(4+4+9+4); // length + type + data + crc
+  const view=new DataView(chunk.buffer);
+  view.setUint32(0,9); // length = 9
+  chunk[4]=0x70;chunk[5]=0x48;chunk[6]=0x59;chunk[7]=0x73; // "pHYs"
+  view.setUint32(8,ppm); // X ppm
+  view.setUint32(12,ppm); // Y ppm
+  chunk[16]=1; // unit = metre
+  // CRC of type+data (13 bytes from offset 4)
+  const crcData=chunk.slice(4,17);
+  view.setUint32(17,crc32(crcData));
+  // Combine
+  const out=new Uint8Array(sig.length+beforeIHDR.length+chunk.length+rest.length);
+  let off=0;
+  out.set(sig,off);off+=sig.length;
+  out.set(beforeIHDR,off);off+=beforeIHDR.length;
+  out.set(chunk,off);off+=chunk.length;
+  out.set(rest,off);
+  return out;
+}
+
+function crc32(data){
+  let table=[];
+  for(let i=0;i<256;i++){let c=i;for(let j=0;j<8;j++)c=c&1?0xEDB88320^(c>>>1):c>>>1;table[i]=c;}
+  let crc=0xFFFFFFFF;
+  for(let i=0;i<data.length;i++)crc=table[(crc^data[i])&0xFF]^(crc>>>8);
+  return(crc^0xFFFFFFFF)>>>0;
+}
+
+function reset(){
+  origImg=null;origFile=null;
+  document.getElementById('fileInput').value='';
+  document.getElementById('fileInfo').style.display='none';
+  document.getElementById('controls').style.display='none';
+  document.getElementById('resultArea').style.display='none';
+  dz.style.display='block';
+  setStatus('');
+}
+</script>
+</body></html>

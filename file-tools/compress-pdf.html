@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compress PDF — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../file-converter.html">← File Converter</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../file-converter.html">File Converter</a><span>/</span><span>Compress PDF</span></div>
+  <h1 class="page-title">Compress PDF</h1>
+  <p class="page-desc">Reduce your PDF file size by re-rendering pages at a lower quality. Works entirely in your browser.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept=".pdf">
+    <div class="drop-icon">🗜️</div>
+    <div class="drop-title">Drop your PDF here</div>
+    <div class="drop-sub">or click to browse</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">🗜️</div>
+    <div class="file-info-text">
+      <div class="file-info-name" id="fname"></div>
+      <div class="file-info-size" id="fsize"></div>
+    </div>
+    <button class="file-remove" onclick="resetFile()">✕</button>
+  </div>
+  <div id="opts" style="display:none">
+    <div class="options-row">
+      <div class="option-group">
+        <div class="option-label">Compression level</div>
+        <select class="option-select" id="level">
+          <option value="0.9">Low — best quality, smaller savings</option>
+          <option value="0.75" selected>Medium — balanced quality &amp; size</option>
+          <option value="0.55">High — smaller file, reduced quality</option>
+          <option value="0.35">Maximum — smallest file, low quality</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <div class="option-label">Render scale</div>
+        <select class="option-select" id="scale">
+          <option value="1.5">High (150 DPI)</option>
+          <option value="1.0" selected>Medium (96 DPI)</option>
+          <option value="0.75">Low (72 DPI — screen only)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="btn-row">
+    <button class="btn-primary" id="convertBtn" onclick="compress()" disabled>Compress PDF</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div class="result-box" id="result">
+    <div class="result-label">Compression complete</div>
+    <div class="result-stat" id="resultStat"></div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-primary" id="dlBtn">⬇ Download Compressed PDF</button>
+      <button class="btn-secondary" onclick="resetFile()">Compress another</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let currentFile = null, compressedBlob = null;
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(f) {
+  if (!f || !f.name.match(/\.pdf$/i)) { setStatus('Please upload a PDF file', 'error'); return; }
+  currentFile = f;
+  document.getElementById('fname').textContent = f.name;
+  document.getElementById('fsize').textContent = formatSize(f.size);
+  document.getElementById('fileInfo').style.display = 'flex';
+  document.getElementById('opts').style.display = 'block';
+  dz.style.display = 'none';
+  document.getElementById('convertBtn').disabled = false;
+}
+
+function resetFile() {
+  currentFile = null; compressedBlob = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('opts').style.display = 'none';
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('prog').classList.remove('active');
+  dz.style.display = 'block';
+  document.getElementById('convertBtn').disabled = true;
+  setStatus('');
+}
+
+function formatSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+function setStatus(msg, type) {
+  const s = document.getElementById('status');
+  s.textContent = msg; s.className = 'status-msg' + (type ? ' ' + type : '');
+}
+
+async function compress() {
+  if (!currentFile) return;
+  document.getElementById('convertBtn').disabled = true;
+  const prog = document.getElementById('prog');
+  const fill = document.getElementById('progFill');
+  prog.classList.add('active'); fill.style.width = '5%';
+  const quality = parseFloat(document.getElementById('level').value);
+  const scale = parseFloat(document.getElementById('scale').value);
+  setStatus('Loading PDF...');
+  try {
+    const ab = await currentFile.arrayBuffer();
+    // Render each page via pdf.js and re-embed as JPEG in a new PDF
+    const pdfSrc = await pdfjsLib.getDocument({ data: ab.slice() }).promise;
+    const total = pdfSrc.numPages;
+    const newPdf = await PDFLib.PDFDocument.create();
+
+    for (let i = 1; i <= total; i++) {
+      fill.style.width = (5 + (i / total) * 85) + '%';
+      setStatus(`Compressing page ${i} of ${total}...`);
+      const page = await pdfSrc.getPage(i);
+      const vp = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = vp.width; canvas.height = vp.height;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      // Convert to JPEG blob at chosen quality
+      const jpegBlob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+      const jpegBytes = await jpegBlob.arrayBuffer();
+      const jpegImg = await newPdf.embedJpg(jpegBytes);
+      // Use original page dimensions (in points, 72pt = 1 inch)
+      const origVp = page.getViewport({ scale: 1.0 });
+      const pdfPage = newPdf.addPage([origVp.width, origVp.height]);
+      pdfPage.drawImage(jpegImg, { x: 0, y: 0, width: origVp.width, height: origVp.height });
+    }
+
+    fill.style.width = '98%';
+    setStatus('Saving...');
+    const bytes = await newPdf.save();
+    compressedBlob = new Blob([bytes], { type: 'application/pdf' });
+    fill.style.width = '100%';
+    setTimeout(() => prog.classList.remove('active'), 400);
+
+    const saved = currentFile.size - compressedBlob.size;
+    const pct = ((saved / currentFile.size) * 100).toFixed(1);
+    document.getElementById('resultStat').textContent = formatSize(compressedBlob.size);
+    if (saved > 0) {
+      document.getElementById('resultSub').textContent = `Original: ${formatSize(currentFile.size)} · Saved: ${formatSize(saved)} (${pct}%)`;
+    } else {
+      document.getElementById('resultSub').textContent = `Original: ${formatSize(currentFile.size)} · This PDF is already well-optimised. Try a higher compression level.`;
+    }
+    const name = currentFile.name.replace(/\.pdf$/i, '-compressed.pdf');
+    document.getElementById('dlBtn').onclick = () => {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(compressedBlob); a.download = name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    };
+    document.getElementById('result').classList.add('show');
+    setStatus('Done!', 'success');
+  } catch(e) {
+    setStatus('Failed: ' + e.message, 'error');
+    prog.classList.remove('active');
+  }
+  document.getElementById('convertBtn').disabled = false;
+}
+</script>
+</body></html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toolbox — Free Online Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0a0a0a; --bg2: #111111; --line: rgba(255,255,255,0.08);
+  --text: #f0ede6; --muted: rgba(240,237,230,0.45);
+  --card-bg: #111111; --card-border: rgba(255,255,255,0.07); --card-hover: rgba(255,255,255,0.03);
+  --tag-bg: rgba(255,255,255,0.06); --tag-border: rgba(255,255,255,0.1);
+  --serif: 'DM Serif Display', Georgia, serif; --sans: 'DM Sans', sans-serif;
+}
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-weight: 300; line-height: 1.6; min-height: 100vh; overflow-x: hidden; }
+
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2.5rem; border-bottom: 0.5px solid var(--line); background: rgba(10,10,10,0.85); backdrop-filter: blur(12px); }
+.nav-logo { font-family: var(--serif); font-size: 1.15rem; color: var(--text); text-decoration: none; }
+.nav-links { display: flex; gap: 2rem; list-style: none; }
+.nav-links a { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+.nav-links a:hover { color: var(--text); }
+
+.hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 8rem 2.5rem 4rem; position: relative; border-bottom: 0.5px solid var(--line); }
+.hero-label { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 2rem; display: flex; align-items: center; gap: 0.75rem; animation: fadein 0.6s ease both; }
+.hero-label::before { content: ''; display: inline-block; width: 2rem; height: 0.5px; background: var(--muted); }
+.hero-title { font-family: var(--serif); font-size: clamp(3rem, 7vw, 5.5rem); line-height: 1.05; letter-spacing: -0.02em; color: var(--text); max-width: 14ch; margin-bottom: 2rem; animation: fadein 0.7s 0.1s ease both; }
+.hero-title em { font-style: italic; color: rgba(240,237,230,0.5); }
+.hero-desc { font-size: 0.95rem; color: var(--muted); max-width: 40ch; line-height: 1.8; margin-bottom: 3rem; animation: fadein 0.7s 0.2s ease both; }
+.hero-stats { display: flex; gap: 2.5rem; animation: fadein 0.7s 0.3s ease both; }
+.stat-item { display: flex; flex-direction: column; gap: 0.2rem; }
+.stat-num { font-family: var(--serif); font-size: 1.6rem; color: var(--text); }
+.stat-label { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+.scroll-indicator { position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 0.5rem; cursor: pointer; text-decoration: none; }
+.scroll-text { font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.scroll-line { width: 0.5px; height: 2.5rem; background: linear-gradient(to bottom, var(--muted), transparent); animation: scrollpulse 2s ease-in-out infinite; }
+@keyframes scrollpulse { 0%,100%{opacity:0.3;transform:scaleY(1)} 50%{opacity:1;transform:scaleY(0.7)} }
+
+.tools-section { padding: 5rem 2.5rem 6rem; }
+.section-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 3rem; padding-bottom: 1.25rem; border-bottom: 0.5px solid var(--line); }
+.section-label { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.section-count { font-family: var(--serif); font-size: 0.85rem; color: var(--muted); }
+
+.category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+
+.category-card { display: flex; flex-direction: column; padding: 2rem 1.75rem 1.5rem; background: var(--card-bg); border: 0.5px solid var(--card-border); border-radius: 4px; cursor: pointer; text-decoration: none; color: var(--text); transition: background 0.2s, border-color 0.2s, transform 0.15s; position: relative; overflow: hidden; min-height: 200px; }
+.category-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 0.5px; background: transparent; transition: background 0.2s; }
+.category-card:hover { background: var(--card-hover); border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
+.category-card:hover::before { background: rgba(255,255,255,0.25); }
+
+.card-num { font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 1.5rem; }
+.card-icon { font-size: 1.6rem; margin-bottom: 1rem; opacity: 0.8; }
+.card-name { font-family: var(--serif); font-size: 1.3rem; color: var(--text); line-height: 1.2; margin-bottom: 0.6rem; }
+.card-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.6; flex: 1; }
+.card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 1.5rem; padding-top: 1rem; border-top: 0.5px solid var(--line); }
+.card-count { font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.card-arrow { font-size: 0.8rem; color: var(--muted); opacity: 0; transition: opacity 0.2s, transform 0.2s; }
+.category-card:hover .card-arrow { opacity: 1; transform: translate(3px, -3px); }
+
+.ad-strip { margin: 3rem 0; padding: 1rem 1.5rem; border: 0.5px dashed var(--line); border-radius: 4px; text-align: center; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.15); }
+
+footer { padding: 2rem 2.5rem; border-top: 0.5px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+.footer-logo { font-family: var(--serif); font-size: 0.95rem; color: var(--muted); }
+.footer-note { font-size: 0.72rem; color: rgba(240,237,230,0.2); letter-spacing: 0.05em; }
+
+@keyframes fadein { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="#tools">Tools</a></li>
+    <li><a href="updates.html">Updates</a></li>
+    <li><a href="#">About</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-label">Free online utility tools</div>
+  <h1 class="hero-title">Simple tools. <em>Zero</em> friction.</h1>
+  <p class="hero-desc">Everything you need — file converters, calculators, formatters, and more. No signup. No cost. Just works.</p>
+  <div class="hero-stats">
+    <div class="stat-item">
+      <span class="stat-num">6</span>
+      <span class="stat-label">Categories</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">60+</span>
+      <span class="stat-label">Tools</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">0</span>
+      <span class="stat-label">Signups</span>
+    </div>
+  </div>
+  <a href="updates.html" id="whatsNewBanner" style="display:inline-flex;align-items:center;gap:0.6rem;margin-top:2rem;padding:0.5rem 1rem;background:rgba(107,255,184,0.06);border:0.5px solid rgba(107,255,184,0.2);border-radius:3px;text-decoration:none;transition:background 0.2s;width:fit-content">
+    <span style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:#6bffb8" id="bannerText">🟢 What's New</span>
+    <span style="font-size:0.62rem;color:rgba(107,255,184,0.5)">→</span>
+  </a>
+
+  <a href="#tools" class="scroll-indicator">
+    <span class="scroll-text">Explore</span>
+    <div class="scroll-line"></div>
+  </a>
+</section>
+
+<section class="tools-section" id="tools">
+  <div class="section-header">
+    <span class="section-label">All categories</span>
+    <span class="section-count">6 tools</span>
+  </div>
+
+  <div class="category-grid">
+
+    <a href="file-converter.html" class="category-card">
+      <div class="card-num">01</div>
+      <div class="card-icon">📄</div>
+      <div class="card-name">File Converter</div>
+      <div class="card-desc">Convert between PDF, Word, Excel, images and more. Fast, free, no signup required.</div>
+      <div class="card-footer">
+        <span class="card-count">15 tools</span>
+        <span class="card-arrow">↗</span>
+      </div>
+    </a>
+
+    <a href="image-tools.html" class="category-card">
+      <div class="card-num">02</div>
+      <div class="card-icon">🖼️</div>
+      <div class="card-name">Image & Design</div>
+      <div class="card-desc">Compress, convert, remove backgrounds, generate QR codes and favicons instantly.</div>
+      <div class="card-footer">
+        <span class="card-count">15 tools</span>
+        <span class="card-arrow">↗</span>
+      </div>
+    </a>
+
+    <a href="finance.html" class="category-card">
+      <div class="card-num">03</div>
+      <div class="card-icon">📈</div>
+      <div class="card-name">Finance Calculators</div>
+      <div class="card-desc">SIP, EMI, GST, FD — all the calculators you need for smart financial decisions.</div>
+      <div class="card-footer">
+        <span class="card-count">9 tools</span>
+        <span class="card-arrow">↗</span>
+      </div>
+    </a>
+
+    <a href="text-tools.html" class="category-card">
+      <div class="card-num">04</div>
+      <div class="card-icon">🔤</div>
+      <div class="card-name">Text Tools</div>
+      <div class="card-desc">Word counter, case converter, JSON formatter, lorem ipsum and more developer utilities.</div>
+      <div class="card-footer">
+        <span class="card-count">9 tools</span>
+        <span class="card-arrow">↗</span>
+      </div>
+    </a>
+
+    <a href="exam-tools.html" class="category-card">
+      <div class="card-num">05</div>
+      <div class="card-icon">🎓</div>
+      <div class="card-name">Study & Exam Tools</div>
+      <div class="card-desc">CGPA converter, NEET rank predictor, JEE percentile calculator and more for Indian students.</div>
+      <div class="card-footer">
+        <span class="card-count">9 tools</span>
+        <span class="card-arrow">↗</span>
+      </div>
+    </a>
+
+    <a href="resume.html" class="category-card">
+      <div class="card-num">06</div>
+      <div class="card-icon">📋</div>
+      <div class="card-name">Resume & Career</div>
+      <div class="card-desc">Format your resume, generate cover letters, and check ATS compatibility — all free.</div>
+      <div class="card-footer">
+        <span class="card-count">8 tools</span>
+        <span class="card-arrow">↗</span>
+      </div>
+    </a>
+
+  </div>
+
+  <div class="ad-strip">Advertisement</div>
+
+</section>
+
+<footer>
+  <span class="footer-logo">Toolbox.</span>
+  <span class="footer-note">Free tools. Always.</span>
+</footer>
+
+</body>
+</html>

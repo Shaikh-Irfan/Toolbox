@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compress Image — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../image-tools.html">← Image & Design</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../image-tools.html">Image & Design</a><span>/</span><span>Compress Image</span></div>
+  <h1 class="page-title">Compress Image</h1>
+  <p class="page-desc">Shrink your image file size by adjusting quality. Preview before downloading. 100% browser-based.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp">
+    <div class="drop-icon">🗜️</div>
+    <div class="drop-title">Drop your image here</div>
+    <div class="drop-sub">JPG, PNG, WEBP supported</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">🖼️</div>
+    <div class="file-info-text"><div class="file-info-name" id="fname"></div><div class="file-info-size" id="fsize"></div></div>
+    <button class="file-remove" onclick="reset()">✕</button>
+  </div>
+  <div id="controls" style="display:none">
+    <div class="options-row">
+      <div class="option-group" style="flex:1">
+        <div class="option-label">Quality — <span id="qLabel">80%</span></div>
+        <div class="range-row" style="margin:0">
+          <input type="range" class="range-input" id="quality" min="1" max="100" value="80" oninput="onQualityChange()">
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option-label">Output format</div>
+        <select class="option-select" id="outFmt">
+          <option value="image/jpeg">JPG</option>
+          <option value="image/webp">WEBP</option>
+          <option value="image/png">PNG (lossless)</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:1.5rem">
+      <div>
+        <div class="option-label" style="margin-bottom:0.5rem">Original</div>
+        <img id="origPreview" style="max-width:220px;max-height:160px;border-radius:3px;border:0.5px solid rgba(255,255,255,0.1)">
+        <div class="status-msg" id="origSize" style="margin-top:0.3rem"></div>
+      </div>
+      <div>
+        <div class="option-label" style="margin-bottom:0.5rem">Compressed</div>
+        <img id="compPreview" style="max-width:220px;max-height:160px;border-radius:3px;border:0.5px solid rgba(255,255,255,0.1)">
+        <div class="status-msg" id="compSize" style="margin-top:0.3rem"></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="dlBtn" onclick="doDownload()">⬇ Download Compressed Image</button>
+      <button class="btn-secondary" onclick="reset()">Choose another</button>
+    </div>
+  </div>
+  <div class="status-msg" id="status"></div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+let origFile = null, compressedBlob = null, origImg = null;
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 15000);
+}
+
+function loadImg(file) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.onerror = rej; img.src = url;
+  });
+}
+
+function formatSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(2) + ' MB';
+}
+
+function setStatus(msg, type) {
+  const s = document.getElementById('status');
+  s.textContent = msg; s.className = 'status-msg' + (type ? ' ' + type : '');
+}
+
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+async function handleFile(f) {
+  if (!f || !f.type.startsWith('image/')) { setStatus('Please upload an image file', 'error'); return; }
+  origFile = f;
+  origImg = await loadImg(f);
+  document.getElementById('fname').textContent = f.name;
+  document.getElementById('fsize').textContent = formatSize(f.size);
+  document.getElementById('fileInfo').style.display = 'flex';
+  dz.style.display = 'none';
+  const origUrl = URL.createObjectURL(f);
+  document.getElementById('origPreview').src = origUrl;
+  document.getElementById('origSize').textContent = formatSize(f.size);
+  document.getElementById('controls').style.display = 'block';
+  await compress();
+}
+
+async function compress() {
+  if (!origImg) return;
+  const quality = parseInt(document.getElementById('quality').value) / 100;
+  const fmt = document.getElementById('outFmt').value;
+  return new Promise(res => {
+    const canvas = document.createElement('canvas');
+    canvas.width = origImg.naturalWidth; canvas.height = origImg.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    if (fmt === 'image/jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+    ctx.drawImage(origImg, 0, 0);
+    canvas.toBlob(blob => {
+      compressedBlob = blob;
+      const url = URL.createObjectURL(blob);
+      document.getElementById('compPreview').src = url;
+      document.getElementById('compSize').textContent = formatSize(blob.size) + ' (' + Math.round((1 - blob.size/origFile.size)*100) + '% smaller)';
+      res();
+    }, fmt, fmt === 'image/png' ? undefined : quality);
+  });
+}
+
+function onQualityChange() {
+  document.getElementById('qLabel').textContent = document.getElementById('quality').value + '%';
+  compress();
+}
+
+document.getElementById('outFmt').addEventListener('change', compress);
+
+function doDownload() {
+  if (!compressedBlob) return;
+  const fmt = document.getElementById('outFmt').value;
+  const ext = {['image/jpeg']:'jpg',['image/webp']:'webp',['image/png']:'png'}[fmt];
+  const name = (origFile.name.replace(/\.[^.]+$/, '') || 'image') + '-compressed.' + ext;
+  downloadBlob(compressedBlob, name);
+}
+
+function reset() {
+  origFile = null; compressedBlob = null; origImg = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('controls').style.display = 'none';
+  dz.style.display = 'block';
+  setStatus('');
+}
+</script>
+</body></html>

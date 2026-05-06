@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retirement Calculator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.result-card{padding:1.25rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px}
+.rc-label{font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem}
+.rc-value{font-family:var(--serif);font-size:1.4rem;color:var(--text)}
+.results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.75rem;margin-top:1.5rem}
+.insight{padding:1rem 1.25rem;background:rgba(107,255,184,0.05);border:0.5px solid rgba(107,255,184,0.15);border-radius:4px;font-size:0.82rem;color:rgba(240,237,230,0.7);line-height:1.7;margin-top:1rem}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../finance.html">← Finance</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../finance.html">Finance</a><span>/</span><span>Retirement Calculator</span></div>
+  <h1 class="page-title">Retirement Calculator</h1>
+  <p class="page-desc">Find out how much corpus you need to retire and how much to save monthly to get there.</p>
+</div>
+<div class="tool-workspace">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1.25rem;margin-bottom:1.5rem">
+    <div class="option-group">
+      <div class="option-label">Current Age</div>
+      <input type="number" class="option-input" id="curAge" value="30" min="18" max="80" oninput="calc()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Retirement Age</div>
+      <input type="number" class="option-input" id="retAge" value="60" min="30" max="80" oninput="calc()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Life Expectancy</div>
+      <input type="number" class="option-input" id="lifeExp" value="80" min="50" max="100" oninput="calc()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Monthly Expenses Today (₹)</div>
+      <input type="number" class="option-input" id="monthly" value="50000" oninput="calc()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Inflation Rate (%) — <span id="infLabel">6%</span></div>
+      <div class="range-row" style="margin:0"><input type="range" class="range-input" id="inflation" min="1" max="15" value="6" step="0.5" oninput="document.getElementById('infLabel').textContent=this.value+'%';calc()"></div>
+    </div>
+    <div class="option-group">
+      <div class="option-label">Expected Return on Investment (%) — <span id="roiLabel">10%</span></div>
+      <div class="range-row" style="margin:0"><input type="range" class="range-input" id="roi" min="1" max="20" value="10" step="0.5" oninput="document.getElementById('roiLabel').textContent=this.value+'%';calc()"></div>
+    </div>
+    <div class="option-group">
+      <div class="option-label">Current Savings / Investments (₹)</div>
+      <input type="number" class="option-input" id="existing" value="200000" oninput="calc()" style="width:100%">
+    </div>
+  </div>
+  <div class="results-grid">
+    <div class="result-card"><div class="rc-label">Years to Retire</div><div class="rc-value" id="yrsLeft">—</div></div>
+    <div class="result-card"><div class="rc-label">Monthly Expense at Retirement</div><div class="rc-value" id="futureExp">—</div></div>
+    <div class="result-card" style="grid-column:1/-1"><div class="rc-label">Total Corpus Needed</div><div class="rc-value" id="corpus" style="font-size:2rem;color:#ffc850">—</div></div>
+    <div class="result-card"><div class="rc-label">Value of Existing Savings</div><div class="rc-value" id="existingFV">—</div></div>
+    <div class="result-card"><div class="rc-label">Shortfall</div><div class="rc-value" id="shortfall" style="color:#ff7878">—</div></div>
+    <div class="result-card" style="grid-column:1/-1"><div class="rc-label">Monthly SIP Needed to Bridge Gap</div><div class="rc-value" id="sipNeeded" style="font-size:2rem;color:#6bffb8">—</div></div>
+  </div>
+  <div class="insight" id="insight"></div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function fmt(n){return '₹'+Math.round(n).toLocaleString('en-IN');}
+function calc(){
+  const cur=parseInt(document.getElementById('curAge').value)||30;
+  const ret=parseInt(document.getElementById('retAge').value)||60;
+  const life=parseInt(document.getElementById('lifeExp').value)||80;
+  const monthly=parseFloat(document.getElementById('monthly').value)||0;
+  const inf=parseFloat(document.getElementById('inflation').value)/100;
+  const roi=parseFloat(document.getElementById('roi').value)/100;
+  const existing=parseFloat(document.getElementById('existing').value)||0;
+
+  if(ret<=cur){document.getElementById('corpus').textContent='Retirement age must be greater than current age';return;}
+
+  const yrs=ret-cur;
+  const retireYrs=Math.max(0,life-ret);
+
+  // Future monthly expense at retirement
+  const futureMonthly=monthly*Math.pow(1+inf,yrs);
+
+  // Corpus needed using present value of annuity (post-retirement)
+  // Real return = (1+roi)/(1+inf) - 1
+  const realReturn=(1+roi)/(1+inf)-1;
+  let corpus;
+  if(Math.abs(realReturn)<0.0001){
+    corpus=futureMonthly*12*retireYrs;
+  } else {
+    corpus=futureMonthly*12*(1-Math.pow(1+realReturn,-retireYrs))/realReturn;
+  }
+
+  // Future value of existing savings
+  const existingFV=existing*Math.pow(1+roi,yrs);
+
+  // Shortfall
+  const shortfall=Math.max(0,corpus-existingFV);
+
+  // Monthly SIP needed (using SIP FV formula)
+  const mr=roi/12;
+  const mn=yrs*12;
+  let sipNeeded=0;
+  if(shortfall>0 && mn>0){
+    sipNeeded=shortfall*mr/(Math.pow(1+mr,mn)-1)/(1+mr);
+  }
+
+  document.getElementById('yrsLeft').textContent=yrs+' years';
+  document.getElementById('futureExp').textContent=fmt(futureMonthly)+'/mo';
+  document.getElementById('corpus').textContent=fmt(corpus);
+  document.getElementById('existingFV').textContent=fmt(existingFV);
+  document.getElementById('shortfall').textContent=fmt(shortfall);
+  document.getElementById('sipNeeded').textContent=sipNeeded<1?'₹0 — You\'re on track!':fmt(sipNeeded)+'/mo';
+
+  document.getElementById('insight').innerHTML=
+    `💡 You need a retirement corpus of <strong style="color:var(--text)">${fmt(corpus)}</strong> to sustain ` +
+    `<strong style="color:var(--text)">${fmt(futureMonthly)}/month</strong> for ${retireYrs} years after retirement. ` +
+    (sipNeeded<1
+      ? `Your existing savings will grow to <strong style="color:#6bffb8">${fmt(existingFV)}</strong> — you are already on track! 🎉`
+      : `Start a SIP of <strong style="color:#6bffb8">${fmt(sipNeeded)}/month</strong> today to bridge the gap.`);
+}
+calc();
+</script>
+</body></html>

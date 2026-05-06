@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GST Calculator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.gst-tabs{display:flex;gap:0;margin-bottom:1.5rem;border:0.5px solid var(--card-border);border-radius:4px;overflow:hidden;width:fit-content}
+.gst-tab{padding:0.55rem 1.5rem;font-size:0.78rem;letter-spacing:0.06em;text-transform:uppercase;background:transparent;color:var(--muted);border:none;cursor:pointer;transition:background 0.2s,color 0.2s;font-family:var(--sans)}
+.gst-tab.active{background:rgba(255,255,255,0.08);color:var(--text)}
+.result-card{padding:1.25rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px;margin-bottom:0.75rem}
+.result-card-label{font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.35rem}
+.result-card-value{font-family:var(--serif);font-size:1.5rem;color:var(--text)}
+.gst-tabs { display:flex; gap:0; margin-bottom:1.5rem; border:0.5px solid var(--card-border); border-radius:4px; overflow:hidden; width:fit-content; }
+.gst-tab { padding:0.55rem 1.5rem; font-size:0.78rem; letter-spacing:0.06em; text-transform:uppercase; background:transparent; color:var(--muted); border:none; cursor:pointer; transition:background 0.2s,color 0.2s; font-family:var(--sans); }
+.gst-tab.active { background:rgba(255,255,255,0.08); color:var(--text); }
+.gst-rate-btn { padding:0.5rem; background:var(--card-bg); border:0.5px solid var(--card-border); color:var(--muted); border-radius:3px; cursor:pointer; font-size:0.8rem; font-family:var(--sans); transition:all 0.2s; }
+.gst-rate-btn.active { background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.2); color:var(--text); }
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../finance.html">← Finance</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../finance.html">Finance</a><span>/</span><span>GST Calculator</span></div>
+  <h1 class="page-title">GST Calculator</h1>
+  <p class="page-desc">Add GST to a base price or remove GST from an inclusive price. Supports all Indian GST slabs.</p>
+</div>
+<div class="tool-workspace" style="max-width:520px">
+  <div class="gst-tabs">
+    <button class="gst-tab active" onclick="setMode('add',this)">Add GST</button>
+    <button class="gst-tab" onclick="setMode('remove',this)">Remove GST</button>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:1.25rem;margin-bottom:1.5rem">
+    <div class="option-group">
+      <div class="option-label" id="amountLabel">Original Amount (₹) — before GST</div>
+      <input type="number" class="option-input" id="amount" value="1000" min="0" oninput="calc()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">GST Rate</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0.4rem">
+        <button class="gst-rate-btn active" onclick="setRate(5,this)">5%</button>
+        <button class="gst-rate-btn" onclick="setRate(12,this)">12%</button>
+        <button class="gst-rate-btn" onclick="setRate(18,this)">18%</button>
+        <button class="gst-rate-btn" onclick="setRate(28,this)">28%</button>
+        <button class="gst-rate-btn" onclick="setRate('custom',this)">Custom</button>
+      </div>
+      <input type="number" class="option-input" id="customRate" value="5" style="width:100%;margin-top:0.5rem;display:none" oninput="calc()" placeholder="Enter custom GST %">
+    </div>
+  </div>
+  <div class="result-card"><div class="result-card-label" id="gstLabel">GST Amount (5%)</div><div class="result-card-value" id="gstAmt">—</div></div>
+  <div class="result-card"><div class="result-card-label" id="totalLabel">Total Amount (with GST)</div><div class="result-card-value" id="totalAmt" style="color:#6bffb8">—</div></div>
+  <div class="result-card"><div class="result-card-label" id="baseLabel">Original Amount (without GST)</div><div class="result-card-value" id="baseAmt">—</div></div>
+  <div class="ad-strip">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<style>
+.gst-rate-btn{padding:0.5rem;background:var(--card-bg);border:0.5px solid var(--card-border);color:var(--muted);border-radius:3px;cursor:pointer;font-size:0.8rem;font-family:var(--sans);transition:all 0.2s}
+.gst-rate-btn.active{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.2);color:var(--text)}
+.gst-tabs { display:flex; gap:0; margin-bottom:1.5rem; border:0.5px solid var(--card-border); border-radius:4px; overflow:hidden; width:fit-content; }
+.gst-tab { padding:0.55rem 1.5rem; font-size:0.78rem; letter-spacing:0.06em; text-transform:uppercase; background:transparent; color:var(--muted); border:none; cursor:pointer; transition:background 0.2s,color 0.2s; font-family:var(--sans); }
+.gst-tab.active { background:rgba(255,255,255,0.08); color:var(--text); }
+.gst-rate-btn { padding:0.5rem; background:var(--card-bg); border:0.5px solid var(--card-border); color:var(--muted); border-radius:3px; cursor:pointer; font-size:0.8rem; font-family:var(--sans); transition:all 0.2s; }
+.gst-rate-btn.active { background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.2); color:var(--text); }
+</style>
+<script>
+let mode='add', rate=5;
+function setMode(m,btn){
+  mode=m;
+  document.querySelectorAll('.gst-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('amountLabel').textContent = m==='add' ? 'Original Amount (₹) — before GST' : 'Amount (₹) — including GST';
+  calc();
+}
+function setRate(r,btn){
+  document.querySelectorAll('.gst-rate-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const custom=document.getElementById('customRate');
+  if(r==='custom'){custom.style.display='block';rate=parseFloat(custom.value)||18;}
+  else{custom.style.display='none';rate=r;}
+  calc();
+}
+function fmt(n){return '₹'+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+function calc(){
+  const amt=parseFloat(document.getElementById('amount').value)||0;
+  const r=parseFloat(document.getElementById('customRate').style.display==='none'?rate:document.getElementById('customRate').value)||rate;
+  document.getElementById('gstLabel').textContent=`GST Amount (${r}%)`;
+  if(mode==='add'){
+    const gst=amt*r/100;
+    const total=amt+gst;
+    document.getElementById('gstAmt').textContent=fmt(gst);
+    document.getElementById('totalAmt').textContent=fmt(total);
+    document.getElementById('baseAmt').textContent=fmt(amt);
+    document.getElementById('totalLabel').textContent='Total Amount (with GST)';
+    document.getElementById('baseLabel').textContent='Original Amount (without GST)';
+  } else {
+    const base=amt/(1+r/100);
+    const gst=amt-base;
+    document.getElementById('gstAmt').textContent=fmt(gst);
+    document.getElementById('totalAmt').textContent=fmt(amt);
+    document.getElementById('baseAmt').textContent=fmt(base);
+    document.getElementById('totalLabel').textContent='Total Amount (inclusive)';
+    document.getElementById('baseLabel').textContent='Base Amount (excluding GST)';
+  }
+}
+calc();
+</script>
+</body></html>

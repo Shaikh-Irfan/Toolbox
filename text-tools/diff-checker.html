@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diff Checker — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.diff-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+@media(max-width:700px){ .diff-grid{grid-template-columns:1fr} }
+.diff-label { font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:0.4rem; }
+.diff-output { background:#0d0d0d; border:0.5px solid var(--card-border); border-radius:4px; padding:1rem; font-family:monospace; font-size:0.8rem; line-height:1.7; min-height:300px; white-space:pre-wrap; word-break:break-word; overflow-y:auto; }
+.diff-add { background:rgba(107,255,184,0.12); color:#6bffb8; display:block; border-left:3px solid #6bffb8; padding-left:0.5rem; margin-left:-0.5rem; }
+.diff-del { background:rgba(255,107,107,0.1); color:#ff7878; display:block; border-left:3px solid #ff7878; padding-left:0.5rem; margin-left:-0.5rem; text-decoration:line-through; }
+.diff-same { color:rgba(240,237,230,0.35); display:block; }
+.diff-stats { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1rem; }
+.diff-stat { padding:0.4rem 0.85rem; border-radius:3px; font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; }
+.stat-added { background:rgba(107,255,184,0.1); color:#6bffb8; border:0.5px solid rgba(107,255,184,0.2); }
+.stat-removed { background:rgba(255,107,107,0.1); color:#ff7878; border:0.5px solid rgba(255,107,107,0.2); }
+.stat-same { background:rgba(255,255,255,0.05); color:var(--muted); border:0.5px solid var(--card-border); }
+@media(max-width:700px){.diff-output{min-height:180px;font-size:0.75rem}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../text-tools.html">← Text Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../text-tools.html">Text Tools</a><span>/</span><span>Diff Checker</span></div>
+  <h1 class="page-title">Diff Checker</h1>
+  <p class="page-desc">Paste two texts and instantly see what was added, removed or unchanged. Line-by-line comparison.</p>
+</div>
+<div class="tool-workspace">
+  <div class="diff-grid" style="margin-bottom:1rem">
+    <div>
+      <div class="diff-label">Original Text</div>
+      <textarea class="textarea-tool" id="text1" placeholder="Paste original text here..." style="min-height:220px"></textarea>
+    </div>
+    <div>
+      <div class="diff-label">Changed Text</div>
+      <textarea class="textarea-tool" id="text2" placeholder="Paste changed text here..." style="min-height:220px"></textarea>
+    </div>
+  </div>
+  <div class="btn-row" style="margin-top:0;margin-bottom:1.5rem">
+    <button class="btn-primary" onclick="runDiff()">Compare Texts</button>
+    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+  </div>
+  <div id="resultArea" style="display:none">
+    <div class="diff-stats" id="diffStats"></div>
+    <div class="diff-label" style="margin-bottom:0.5rem">Differences <span style="font-size:0.6rem;color:var(--muted);margin-left:0.5rem">🟢 Added &nbsp; 🔴 Removed &nbsp; ⬜ Unchanged</span></div>
+    <div class="diff-output" id="diffOutput"></div>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+// Simple LCS-based line diff
+function lcs(a, b){
+  const m=a.length, n=b.length;
+  const dp=Array.from({length:m+1},()=>new Array(n+1).fill(0));
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+    dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1]+1 : Math.max(dp[i-1][j],dp[i][j-1]);
+  // Backtrack
+  const result=[];
+  let i=m,j=n;
+  while(i>0||j>0){
+    if(i>0&&j>0&&a[i-1]===b[j-1]){ result.unshift({type:'same',val:a[i-1]}); i--;j--; }
+    else if(j>0&&(i===0||dp[i][j-1]>=dp[i-1][j])){ result.unshift({type:'add',val:b[j-1]}); j--; }
+    else { result.unshift({type:'del',val:a[i-1]}); i--; }
+  }
+  return result;
+}
+
+function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function runDiff(){
+  const t1 = document.getElementById('text1').value;
+  const t2 = document.getElementById('text2').value;
+  if(!t1.trim() && !t2.trim()){ setStatus('Please enter text in both fields.','error'); return; }
+
+  const lines1 = t1.split('\n');
+  const lines2 = t2.split('\n');
+  const diff = lcs(lines1, lines2);
+
+  let added=0, removed=0, same=0, html='';
+  diff.forEach(d=>{
+    if(d.type==='add'){ added++; html+=`<span class="diff-add">+ ${escHtml(d.val)}</span>`; }
+    else if(d.type==='del'){ removed++; html+=`<span class="diff-del">− ${escHtml(d.val)}</span>`; }
+    else { same++; html+=`<span class="diff-same">  ${escHtml(d.val)}</span>`; }
+  });
+
+  document.getElementById('diffOutput').innerHTML = html || '<span style="color:var(--muted)">No differences found — texts are identical.</span>';
+  document.getElementById('diffStats').innerHTML = `
+    <span class="diff-stat stat-added">+${added} added</span>
+    <span class="diff-stat stat-removed">−${removed} removed</span>
+    <span class="diff-stat stat-same">${same} unchanged</span>`;
+  document.getElementById('resultArea').style.display = 'block';
+  setStatus('');
+}
+
+function clearAll(){
+  document.getElementById('text1').value='';
+  document.getElementById('text2').value='';
+  document.getElementById('resultArea').style.display='none';
+  setStatus('');
+}
+
+function setStatus(msg,type){
+  const s=document.getElementById('status');
+  s.textContent=msg; s.className='status-msg'+(type?' '+type:'');
+}
+</script>
+</body></html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Income Tax Calculator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.regime-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.5rem}
+@media(max-width:600px){.regime-grid{grid-template-columns:1fr}}
+.regime-card{padding:1.5rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px;position:relative}
+.regime-card.winner{border-color:rgba(107,255,184,0.4);background:rgba(107,255,184,0.04)}
+.regime-title{font-family:var(--serif);font-size:1.1rem;color:var(--text);margin-bottom:1rem}
+.tax-row{display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:0.5px solid rgba(255,255,255,0.04);font-size:0.8rem;color:var(--muted)}
+.tax-row.total{border-top:0.5px solid var(--line);border-bottom:none;margin-top:0.5rem;padding-top:0.75rem;color:var(--text);font-size:0.9rem}
+.slab-table{width:100%;border-collapse:collapse;font-size:0.75rem;margin-top:1rem}
+.slab-table th{color:var(--muted);font-weight:400;padding:0.4rem 0.5rem;border-bottom:0.5px solid var(--line);text-align:left;letter-spacing:0.05em;text-transform:uppercase}
+.slab-table td{padding:0.4rem 0.5rem;border-bottom:0.5px solid rgba(255,255,255,0.04);color:var(--muted)}
+.winner-badge{position:absolute;top:1rem;right:1rem;padding:0.2rem 0.6rem;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;background:rgba(107,255,184,0.15);border:0.5px solid rgba(107,255,184,0.3);color:#6bffb8;border-radius:2px}
+.regime-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:1.5rem; }
+@media(max-width:720px){ .regime-grid { grid-template-columns:1fr; } }
+.regime-card { padding:1.5rem; background:var(--card-bg); border:0.5px solid var(--card-border); border-radius:4px; position:relative; }
+.regime-card.winner { border-color:rgba(107,255,184,0.4); background:rgba(107,255,184,0.04); }
+.regime-title { font-family:var(--serif); font-size:1.1rem; color:var(--text); margin-bottom:1rem; }
+.tax-row { display:flex; justify-content:space-between; padding:0.4rem 0; border-bottom:0.5px solid rgba(255,255,255,0.04); font-size:0.8rem; color:var(--muted); }
+.tax-row.total { border-top:0.5px solid var(--line); border-bottom:none; margin-top:0.5rem; padding-top:0.75rem; color:var(--text); font-size:0.9rem; }
+.winner-badge { position:absolute; top:1rem; right:1rem; padding:0.2rem 0.6rem; font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase; background:rgba(107,255,184,0.15); border:0.5px solid rgba(107,255,184,0.3); color:#6bffb8; border-radius:2px; }
+@media(max-width:480px){.tax-row{font-size:0.75rem}.regime-title{font-size:1rem}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../finance.html">← Finance</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../finance.html">Finance</a><span>/</span><span>Income Tax Calculator</span></div>
+  <h1 class="page-title">Income Tax Calculator</h1>
+  <p class="page-desc">Compare Old Regime vs New Regime tax for FY 2024-25. See which regime saves you more money.</p>
+</div>
+<div class="tool-workspace">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem">
+    <div class="option-group">
+      <div class="option-label">Annual Income (₹)</div>
+      <input type="number" class="option-input" id="income" value="1200000" oninput="calc()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Age</div>
+      <select class="option-select" id="age" onchange="calc()" style="width:100%">
+        <option value="below60">Below 60</option>
+        <option value="60to80">60 – 80 (Senior)</option>
+        <option value="above80">Above 80 (Super Senior)</option>
+      </select>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:2rem" id="deductionFields">
+    <div class="option-group">
+      <div class="option-label">80C Investments (₹)</div>
+      <input type="number" class="option-input" id="d80c" value="150000" oninput="calc()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">80D Health Insurance (₹)</div>
+      <input type="number" class="option-input" id="d80d" value="25000" oninput="calc()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">HRA Exemption (₹)</div>
+      <input type="number" class="option-input" id="dhra" value="120000" oninput="calc()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Other Deductions (₹)</div>
+      <input type="number" class="option-input" id="dother" value="0" oninput="calc()" style="width:100%">
+    </div>
+  </div>
+  <p style="font-size:0.72rem;color:var(--muted);margin-bottom:1.5rem">Deductions apply to Old Regime only. New Regime uses standard deduction of ₹75,000.</p>
+
+  <div class="regime-grid" id="regimeGrid"></div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function fmt(n){return '₹'+Math.round(n).toLocaleString('en-IN');}
+function calcTax(income, slabs){
+  let tax=0;
+  for(const s of slabs){
+    if(income<=s.from) break;
+    const taxable=Math.min(income,s.to)-s.from;
+    tax+=taxable*s.rate;
+  }
+  return tax;
+}
+
+const OLD_SLABS_BELOW60=[
+  {from:0,to:250000,rate:0},{from:250000,to:500000,rate:0.05},
+  {from:500000,to:1000000,rate:0.20},{from:1000000,to:Infinity,rate:0.30}
+];
+const OLD_SLABS_60=[
+  {from:0,to:300000,rate:0},{from:300000,to:500000,rate:0.05},
+  {from:500000,to:1000000,rate:0.20},{from:1000000,to:Infinity,rate:0.30}
+];
+const OLD_SLABS_80=[
+  {from:0,to:500000,rate:0},{from:500000,to:1000000,rate:0.20},
+  {from:1000000,to:Infinity,rate:0.30}
+];
+const NEW_SLABS=[
+  {from:0,to:300000,rate:0},{from:300000,to:700000,rate:0.05},
+  {from:700000,to:1000000,rate:0.10},{from:1000000,to:1200000,rate:0.15},
+  {from:1200000,to:1500000,rate:0.20},{from:1500000,to:Infinity,rate:0.30}
+];
+
+function addSurcharge(tax, income){
+  if(income>50000000) return tax*1.37;
+  if(income>20000000) return tax*1.25;
+  if(income>10000000) return tax*1.15;
+  if(income>5000000) return tax*1.10;
+  return tax;
+}
+
+function calc(){
+  const income=parseFloat(document.getElementById('income').value)||0;
+  const age=document.getElementById('age').value;
+  const d80c=Math.min(parseFloat(document.getElementById('d80c').value)||0,150000);
+  const d80d=Math.min(parseFloat(document.getElementById('d80d').value)||0,50000);
+  const dhra=parseFloat(document.getElementById('dhra').value)||0;
+  const dother=parseFloat(document.getElementById('dother').value)||0;
+
+  // OLD REGIME
+  const stdOld=50000;
+  const totalDed=stdOld+d80c+d80d+dhra+dother;
+  const oldTaxableIncome=Math.max(0,income-totalDed);
+  const oldSlabs=age==='60to80'?OLD_SLABS_60:age==='above80'?OLD_SLABS_80:OLD_SLABS_BELOW60;
+  let oldTax=calcTax(oldTaxableIncome,oldSlabs);
+  // 87A rebate old
+  if(oldTaxableIncome<=500000) oldTax=0;
+  oldTax=addSurcharge(oldTax,income);
+  const oldCess=oldTax*0.04;
+  const oldTotal=oldTax+oldCess;
+
+  // NEW REGIME
+  const stdNew=75000;
+  const newTaxableIncome=Math.max(0,income-stdNew);
+  let newTax=calcTax(newTaxableIncome,NEW_SLABS);
+  // 87A rebate new
+  if(newTaxableIncome<=700000) newTax=0;
+  newTax=addSurcharge(newTax,income);
+  const newCess=newTax*0.04;
+  const newTotal=newTax+newCess;
+
+  const oldWins=oldTotal<newTotal;
+  const saved=Math.abs(oldTotal-newTotal);
+
+  document.getElementById('regimeGrid').innerHTML=`
+    <div class="regime-card ${oldWins?'winner':''}">
+      ${oldWins?'<span class="winner-badge">✓ Better for you</span>':''}
+      <div class="regime-title">Old Regime</div>
+      <div class="tax-row"><span>Gross Income</span><span>${fmt(income)}</span></div>
+      <div class="tax-row"><span>Total Deductions</span><span>− ${fmt(totalDed)}</span></div>
+      <div class="tax-row"><span>Taxable Income</span><span>${fmt(oldTaxableIncome)}</span></div>
+      <div class="tax-row"><span>Income Tax</span><span>${fmt(oldTax)}</span></div>
+      <div class="tax-row"><span>Cess (4%)</span><span>${fmt(oldCess)}</span></div>
+      <div class="tax-row total"><span>Total Tax</span><span style="color:${oldWins?'#6bffb8':'inherit'}">${fmt(oldTotal)}</span></div>
+    </div>
+    <div class="regime-card ${!oldWins?'winner':''}">
+      ${!oldWins?'<span class="winner-badge">✓ Better for you</span>':''}
+      <div class="regime-title">New Regime <span style="font-size:0.7rem;color:var(--muted)">(Default FY25)</span></div>
+      <div class="tax-row"><span>Gross Income</span><span>${fmt(income)}</span></div>
+      <div class="tax-row"><span>Std Deduction</span><span>− ${fmt(stdNew)}</span></div>
+      <div class="tax-row"><span>Taxable Income</span><span>${fmt(newTaxableIncome)}</span></div>
+      <div class="tax-row"><span>Income Tax</span><span>${fmt(newTax)}</span></div>
+      <div class="tax-row"><span>Cess (4%)</span><span>${fmt(newCess)}</span></div>
+      <div class="tax-row total"><span>Total Tax</span><span style="color:${!oldWins?'#6bffb8':'inherit'}">${fmt(newTotal)}</span></div>
+    </div>
+    <div style="grid-column:1/-1;padding:1rem 1.25rem;background:rgba(255,200,80,0.05);border:0.5px solid rgba(255,200,80,0.15);border-radius:4px;font-size:0.82rem;color:rgba(240,237,230,0.7)">
+      💡 <strong style="color:var(--text)">${oldWins?'Old Regime':'New Regime'}</strong> saves you <strong style="color:#6bffb8">${fmt(saved)}</strong> in tax this year.
+    </div>`;
+}
+calc();
+</script>
+</body></html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resize Image — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../image-tools.html">← Image & Design</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../image-tools.html">Image & Design</a><span>/</span><span>Resize Image</span></div>
+  <h1 class="page-title">Resize Image</h1>
+  <p class="page-desc">Resize your image to exact pixel dimensions or physical measurements (cm/mm) at a chosen DPI.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept="image/*">
+    <div class="drop-icon">📐</div>
+    <div class="drop-title">Drop your image here</div>
+    <div class="drop-sub">Any image format supported</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">🖼️</div>
+    <div class="file-info-text"><div class="file-info-name" id="fname"></div><div class="file-info-size" id="fsize"></div></div>
+    <button class="file-remove" onclick="reset()">✕</button>
+  </div>
+  <div id="controls" style="display:none">
+    <div class="options-row" style="margin-bottom:1rem">
+      <div class="option-group">
+        <div class="option-label">Unit</div>
+        <select class="option-select" id="unit" onchange="onUnitChange()">
+          <option value="px">Pixels (px)</option>
+          <option value="cm">Centimetres (cm)</option>
+          <option value="mm">Millimetres (mm)</option>
+          <option value="in">Inches</option>
+        </select>
+      </div>
+      <div class="option-group" id="dpiGroup" style="display:none">
+        <div class="option-label">DPI (for cm/mm/in)</div>
+        <select class="option-select" id="dpi">
+          <option value="72">72 DPI (screen)</option>
+          <option value="96">96 DPI (screen)</option>
+          <option value="150">150 DPI</option>
+          <option value="300" selected>300 DPI (print)</option>
+          <option value="600">600 DPI (high print)</option>
+        </select>
+      </div>
+    </div>
+    <div class="options-row">
+      <div class="option-group">
+        <div class="option-label">Width (<span id="wUnit">px</span>)</div>
+        <input type="number" class="option-input" id="wVal" min="1" style="min-width:100px" oninput="onDimChange('w')">
+      </div>
+      <div class="option-group" style="justify-content:flex-end;padding-top:1.5rem">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--muted);cursor:pointer">
+          <input type="checkbox" id="lockRatio" checked style="cursor:pointer"> Lock ratio
+        </label>
+      </div>
+      <div class="option-group">
+        <div class="option-label">Height (<span id="hUnit">px</span>)</div>
+        <input type="number" class="option-input" id="hVal" min="1" style="min-width:100px" oninput="onDimChange('h')">
+      </div>
+    </div>
+    <div class="status-msg" id="dimInfo" style="margin-bottom:1rem"></div>
+    <div class="options-row">
+      <div class="option-group">
+        <div class="option-label">Output format</div>
+        <select class="option-select" id="outFmt">
+          <option value="image/png">PNG</option>
+          <option value="image/jpeg" selected>JPG</option>
+          <option value="image/webp">WEBP</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn-primary" onclick="doResize()">Resize Image</button></div>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div id="resultArea" style="display:none;margin-top:1.5rem">
+    <img id="resultImg" style="max-width:100%;max-height:260px;border-radius:4px;border:0.5px solid rgba(255,255,255,0.1);margin-bottom:1rem">
+    <div class="result-box show" style="margin-bottom:1rem">
+      <div class="result-label">Result dimensions</div>
+      <div class="result-stat" id="resultStat"></div>
+      <div class="result-sub" id="resultSub"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="dlBtn">⬇ Download Resized Image</button>
+      <button class="btn-secondary" onclick="reset()">Resize another</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+let origImg=null, origFile=null, origW=0, origH=0;
+
+function downloadBlob(blob, filename) {
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),15000);
+}
+function loadImg(file){return new Promise((res,rej)=>{const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(url);res(img);};img.onerror=rej;img.src=url;});}
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(2)+' MB';}
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+async function handleFile(f){
+  if(!f||!f.type.startsWith('image/')){setStatus('Please upload an image','error');return;}
+  origFile=f;origImg=await loadImg(f);
+  origW=origImg.naturalWidth;origH=origImg.naturalHeight;
+  document.getElementById('fname').textContent=f.name;
+  document.getElementById('fsize').textContent=formatSize(f.size);
+  document.getElementById('fileInfo').style.display='flex';
+  dz.style.display='none';
+  document.getElementById('wVal').value=origW;
+  document.getElementById('hVal').value=origH;
+  document.getElementById('dimInfo').textContent=`Original: ${origW} × ${origH} px`;
+  document.getElementById('controls').style.display='block';
+  setStatus('');
+}
+
+function unitToPx(val,unit){
+  const dpi=parseInt(document.getElementById('dpi').value);
+  if(unit==='px')return val;
+  if(unit==='in')return Math.round(val*dpi);
+  if(unit==='cm')return Math.round(val/2.54*dpi);
+  if(unit==='mm')return Math.round(val/25.4*dpi);
+  return val;
+}
+
+function pxToUnit(px,unit){
+  const dpi=parseInt(document.getElementById('dpi').value);
+  if(unit==='px')return px;
+  if(unit==='in')return +(px/dpi).toFixed(2);
+  if(unit==='cm')return +(px/dpi*2.54).toFixed(2);
+  if(unit==='mm')return +(px/dpi*25.4).toFixed(1);
+  return px;
+}
+
+function onUnitChange(){
+  const unit=document.getElementById('unit').value;
+  const isPx=unit==='px';
+  document.getElementById('dpiGroup').style.display=isPx?'none':'flex';
+  document.getElementById('wUnit').textContent=unit;
+  document.getElementById('hUnit').textContent=unit;
+  if(origW){
+    document.getElementById('wVal').value=pxToUnit(origW,unit);
+    document.getElementById('hVal').value=pxToUnit(origH,unit);
+  }
+}
+
+function onDimChange(which){
+  if(!document.getElementById('lockRatio').checked||!origW)return;
+  const unit=document.getElementById('unit').value;
+  const ratio=origW/origH;
+  if(which==='w'){
+    const w=parseFloat(document.getElementById('wVal').value)||1;
+    document.getElementById('hVal').value=unit==='px'?Math.round(w/ratio):+(w/ratio).toFixed(2);
+  } else {
+    const h=parseFloat(document.getElementById('hVal').value)||1;
+    document.getElementById('wVal').value=unit==='px'?Math.round(h*ratio):+(h*ratio).toFixed(2);
+  }
+}
+
+async function doResize(){
+  if(!origImg)return;
+  const unit=document.getElementById('unit').value;
+  const wInput=parseFloat(document.getElementById('wVal').value);
+  const hInput=parseFloat(document.getElementById('hVal').value);
+  const targetW=Math.round(unitToPx(wInput,unit));
+  const targetH=Math.round(unitToPx(hInput,unit));
+  if(!targetW||!targetH){setStatus('Please enter valid dimensions','error');return;}
+  const fmt=document.getElementById('outFmt').value;
+  setStatus('Resizing...');
+  const canvas=document.createElement('canvas');
+  canvas.width=targetW;canvas.height=targetH;
+  const ctx=canvas.getContext('2d');
+  if(fmt==='image/jpeg'){ctx.fillStyle='#ffffff';ctx.fillRect(0,0,targetW,targetH);}
+  ctx.drawImage(origImg,0,0,targetW,targetH);
+  canvas.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    document.getElementById('resultImg').src=url;
+    document.getElementById('resultStat').textContent=`${targetW} × ${targetH} px`;
+    document.getElementById('resultSub').textContent=`${formatSize(blob.size)} · from original ${origW}×${origH}px`;
+    const ext={['image/png']:'png',['image/jpeg']:'jpg',['image/webp']:'webp'}[fmt];
+    const name=(origFile.name.replace(/\.[^.]+$/,'')||'image')+'-resized.'+ext;
+    document.getElementById('dlBtn').onclick=()=>downloadBlob(blob,name);
+    document.getElementById('resultArea').style.display='block';
+    setStatus('Done!','success');
+  },fmt,fmt==='image/png'?undefined:0.92);
+}
+
+function reset(){
+  origImg=null;origFile=null;origW=0;origH=0;
+  document.getElementById('fileInput').value='';
+  document.getElementById('fileInfo').style.display='none';
+  document.getElementById('controls').style.display='none';
+  document.getElementById('resultArea').style.display='none';
+  dz.style.display='block';
+  setStatus('');
+}
+</script>
+</body></html>

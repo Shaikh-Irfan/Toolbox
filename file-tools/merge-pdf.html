@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merge PDF — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../file-converter.html">← File Converter</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../file-converter.html">File Converter</a><span>/</span><span>Merge PDF</span></div>
+  <h1 class="page-title">Merge PDF</h1>
+  <p class="page-desc">Combine multiple PDF files into one. Drag to reorder, then merge. Everything runs in your browser.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept=".pdf" multiple>
+    <div class="drop-icon">🔗</div>
+    <div class="drop-title">Drop PDF files here</div>
+    <div class="drop-sub">Select 2 or more PDFs to merge</div>
+  </div>
+  <div class="multi-drop-list" id="fileList"></div>
+  <div class="btn-row">
+    <button class="btn-primary" id="mergeBtn" onclick="merge()" disabled>Merge PDFs</button>
+    <button class="btn-secondary" id="clearBtn" onclick="clearFiles()" style="display:none">Clear all</button>
+  </div>
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="status-msg" id="status"></div>
+  <div class="result-box" id="result">
+    <div class="result-label">Merge complete</div>
+    <div class="result-stat" id="resultStat"></div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-primary" id="dlBtn">⬇ Download Merged PDF</button>
+      <button class="btn-secondary" onclick="clearFiles()">Merge more</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script>
+let files = [];
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); addFiles([...e.dataTransfer.files]); });
+document.getElementById('fileInput').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value=''; });
+
+function addFiles(newFiles) {
+  newFiles.filter(f => f.name.match(/\.pdf$/i)).forEach(f => files.push(f));
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('fileList');
+  list.innerHTML = '';
+  files.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'file-info';
+    div.innerHTML = `<div class="file-info-icon">📑</div>
+      <div class="file-info-text">
+        <div class="file-info-name">${i+1}. ${f.name}</div>
+        <div class="file-info-size">${formatSize(f.size)}</div>
+      </div>
+      <button class="file-remove" onclick="removeFile(${i})">✕</button>`;
+    list.appendChild(div);
+  });
+  document.getElementById('mergeBtn').disabled = files.length < 2;
+  document.getElementById('clearBtn').style.display = files.length ? 'inline-flex' : 'none';
+  setStatus(files.length >= 2 ? `${files.length} files ready to merge` : files.length === 1 ? 'Add at least one more PDF' : '');
+}
+
+function removeFile(i) { files.splice(i, 1); renderList(); }
+function clearFiles() {
+  files = [];
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('prog').classList.remove('active');
+  renderList();
+}
+
+function formatSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+function setStatus(msg, type) {
+  const s = document.getElementById('status');
+  s.textContent = msg; s.className = 'status-msg' + (type ? ' ' + type : '');
+}
+
+async function merge() {
+  if (files.length < 2) return;
+  document.getElementById('mergeBtn').disabled = true;
+  const prog = document.getElementById('prog');
+  const fill = document.getElementById('progFill');
+  prog.classList.add('active'); fill.style.width = '5%';
+  setStatus('Merging...');
+  try {
+    const merged = await PDFLib.PDFDocument.create();
+    for (let i = 0; i < files.length; i++) {
+      fill.style.width = (5 + ((i+1)/files.length)*85) + '%';
+      setStatus(`Processing file ${i+1} of ${files.length}...`);
+      const ab = await files[i].arrayBuffer();
+      const pdf = await PDFLib.PDFDocument.load(ab);
+      const pages = await merged.copyPages(pdf, pdf.getPageIndices());
+      pages.forEach(p => merged.addPage(p));
+    }
+    fill.style.width = '100%';
+    const bytes = await merged.save();
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    setTimeout(() => prog.classList.remove('active'), 400);
+    document.getElementById('resultStat').textContent = `merged.pdf`;
+    document.getElementById('resultSub').textContent = `${merged.getPageCount()} pages total · ${formatSize(blob.size)}`;
+    document.getElementById('dlBtn').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'merged.pdf'; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
+    document.getElementById('result').classList.add('show');
+    setStatus('Merged successfully!', 'success');
+  } catch(e) {
+    setStatus('Failed: ' + e.message, 'error');
+    prog.classList.remove('active');
+  }
+  document.getElementById('mergeBtn').disabled = false;
+}
+</script>
+</body></html>

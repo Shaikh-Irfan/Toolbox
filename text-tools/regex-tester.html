@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regex Tester — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.regex-input-wrap { display:flex; align-items:center; background:#0d0d0d; border:0.5px solid var(--card-border); border-radius:4px; padding:0 0.75rem; margin-bottom:1rem; transition:border-color 0.2s; }
+.regex-input-wrap:focus-within { border-color:rgba(255,255,255,0.3); }
+.regex-slash { font-family:monospace; font-size:1.2rem; color:rgba(255,255,255,0.25); padding:0 0.25rem; user-select:none; }
+.regex-field { flex:1; background:transparent; border:none; color:#6bffb8; font-family:monospace; font-size:0.95rem; padding:0.75rem 0.25rem; outline:none; }
+.regex-flags { background:transparent; border:none; color:var(--muted); font-family:monospace; font-size:0.9rem; padding:0.75rem 0.5rem; outline:none; width:70px; }
+.test-area { position:relative; }
+.test-textarea { width:100%; background:#0d0d0d; border:0.5px solid var(--card-border); color:var(--text); font-family:monospace; font-size:0.85rem; padding:1rem; border-radius:4px; outline:none; resize:vertical; line-height:1.7; min-height:200px; transition:border-color 0.2s; }
+.test-textarea:focus { border-color:rgba(255,255,255,0.25); }
+.highlight-layer { position:absolute; top:0; left:0; width:100%; height:100%; padding:1rem; font-family:monospace; font-size:0.85rem; line-height:1.7; pointer-events:none; color:transparent; white-space:pre-wrap; word-break:break-word; border-radius:4px; border:0.5px solid transparent; overflow:hidden; }
+mark.match { background:rgba(255,200,80,0.35); color:transparent; border-radius:2px; }
+.match-list { margin-top:1rem; display:flex; flex-direction:column; gap:0.4rem; }
+.match-item { display:flex; gap:0.75rem; padding:0.5rem 0.75rem; background:var(--card-bg); border:0.5px solid var(--card-border); border-radius:3px; font-family:monospace; font-size:0.78rem; }
+.match-index { color:var(--muted); min-width:50px; }
+.match-val { color:#ffc850; flex:1; word-break:break-all; }
+.match-pos { color:var(--muted); font-size:0.7rem; }
+.flags-help { font-size:0.7rem; color:var(--muted); margin-bottom:1rem; }
+.common-btn { padding:0.35rem 0.75rem; background:var(--card-bg); border:0.5px solid var(--card-border); color:var(--muted); border-radius:3px; cursor:pointer; font-size:0.72rem; font-family:monospace; transition:all 0.2s; white-space:nowrap; }
+.common-btn:hover { border-color:rgba(255,255,255,0.2); color:var(--text); }
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../text-tools.html">← Text Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../text-tools.html">Text Tools</a><span>/</span><span>Regex Tester</span></div>
+  <h1 class="page-title">Regex Tester</h1>
+  <p class="page-desc">Write a regular expression and test it against any text. Matches are highlighted live with a full match list below.</p>
+</div>
+<div class="tool-workspace">
+
+  <!-- Regex Input -->
+  <div class="option-label" style="margin-bottom:0.4rem">Regular Expression</div>
+  <div class="regex-input-wrap" id="regexWrap">
+    <span class="regex-slash">/</span>
+    <input type="text" class="regex-field" id="regexInput" placeholder="your pattern here" oninput="runTest()">
+    <span class="regex-slash">/</span>
+    <input type="text" class="regex-flags" id="flagsInput" value="g" placeholder="flags" oninput="runTest()" maxlength="6">
+  </div>
+  <div class="flags-help">Flags: <code>g</code> = global &nbsp; <code>i</code> = case insensitive &nbsp; <code>m</code> = multiline &nbsp; <code>s</code> = dot matches newline</div>
+
+  <!-- Common patterns -->
+  <div style="margin-bottom:1.25rem">
+    <div class="option-label" style="margin-bottom:0.5rem">Common Patterns</div>
+    <div style="display:flex;flex-wrap:wrap;gap:0.4rem">
+      <button class="common-btn" onclick="setPattern('[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}','g')">Email</button>
+      <button class="common-btn" onclick="setPattern('https?://[^\\s/$.?#].[^\\s]*','gi')">URL</button>
+      <button class="common-btn" onclick="setPattern('[6-9]\\d{9}','g')">Indian Mobile</button>
+      <button class="common-btn" onclick="setPattern('\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}','g')">Date</button>
+      <button class="common-btn" onclick="setPattern('\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\b','g')">IP Address</button>
+      <button class="common-btn" onclick="setPattern('#[0-9a-fA-F]{3,6}','g')">Hex Colour</button>
+      <button class="common-btn" onclick="setPattern('\\d+','g')">Numbers only</button>
+      <button class="common-btn" onclick="setPattern('[^a-zA-Z0-9\\s]','g')">Special chars</button>
+      <button class="common-btn" onclick="setPattern('^\\s+|\\s+$','gm')">Trim whitespace</button>
+    </div>
+  </div>
+
+  <!-- Test String -->
+  <div class="option-label" style="margin-bottom:0.4rem">Test String</div>
+  <div class="test-area">
+    <div class="highlight-layer" id="highlightLayer"></div>
+    <textarea class="test-textarea" id="testInput" oninput="runTest()" placeholder="Enter test string here...&#10;&#10;Example: Contact us at hello@example.com or visit https://example.com"></textarea>
+  </div>
+
+  <!-- Status -->
+  <div class="status-msg" id="status" style="margin-top:0.75rem"></div>
+
+  <!-- Results -->
+  <div id="resultArea" style="display:none;margin-top:1.5rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+      <div class="option-label" id="matchLabel">Matches</div>
+      <button class="btn-secondary" style="padding:0.4rem 0.85rem;font-size:0.7rem" onclick="copyMatches()">📋 Copy Matches</button>
+    </div>
+    <div class="match-list" id="matchList"></div>
+  </div>
+
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function setPattern(pattern, flags){
+  document.getElementById('regexInput').value = pattern;
+  document.getElementById('flagsInput').value = flags;
+  runTest();
+  document.getElementById('testInput').focus();
+}
+
+function runTest(){
+  const patternStr = document.getElementById('regexInput').value;
+  const flagsStr = document.getElementById('flagsInput').value.replace(/[^gimsuy]/g,'');
+  const testStr = document.getElementById('testInput').value;
+  const wrap = document.getElementById('regexWrap');
+
+  if(!patternStr){
+    document.getElementById('highlightLayer').innerHTML = '';
+    document.getElementById('resultArea').style.display = 'none';
+    setStatus('');
+    wrap.style.borderColor = '';
+    return;
+  }
+
+  let regex;
+  try {
+    regex = new RegExp(patternStr, flagsStr.includes('g') ? flagsStr : flagsStr+'g');
+    wrap.style.borderColor = 'rgba(107,255,184,0.4)';
+  } catch(e){
+    wrap.style.borderColor = 'rgba(255,107,107,0.5)';
+    setStatus('Invalid regex: '+e.message, 'error');
+    document.getElementById('highlightLayer').innerHTML = '';
+    document.getElementById('resultArea').style.display = 'none';
+    return;
+  }
+
+  if(!testStr){
+    setStatus('Enter a test string below.','');
+    document.getElementById('highlightLayer').innerHTML = '';
+    document.getElementById('resultArea').style.display = 'none';
+    return;
+  }
+
+  // Find all matches
+  const matches = [];
+  let m;
+  const safeRegex = new RegExp(patternStr, flagsStr.includes('g') ? flagsStr : flagsStr+'g');
+  while((m = safeRegex.exec(testStr)) !== null){
+    matches.push({ val: m[0], index: m.index, end: m.index+m[0].length, groups: m.slice(1) });
+    if(m[0].length === 0) safeRegex.lastIndex++; // prevent infinite loop on zero-length match
+    if(matches.length > 500) break; // safety limit
+  }
+
+  // Highlight in textarea overlay
+  let highlighted = '';
+  let lastIdx = 0;
+  matches.forEach(match => {
+    highlighted += escHtml(testStr.slice(lastIdx, match.index));
+    highlighted += '<mark class="match">' + escHtml(match.val) + '</mark>';
+    lastIdx = match.end;
+  });
+  highlighted += escHtml(testStr.slice(lastIdx));
+  document.getElementById('highlightLayer').innerHTML = highlighted;
+
+  // Sync scroll
+  const ta = document.getElementById('testInput');
+  const hl = document.getElementById('highlightLayer');
+  ta.addEventListener('scroll', ()=>{ hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft; });
+
+  // Match list
+  if(matches.length === 0){
+    setStatus('No matches found.','error');
+    document.getElementById('resultArea').style.display = 'none';
+    return;
+  }
+
+  setStatus(`${matches.length} match${matches.length!==1?'es':''} found.`, 'success');
+  document.getElementById('matchLabel').textContent = `${matches.length} Match${matches.length!==1?'es':''}`;
+
+  const listHTML = matches.slice(0,100).map((match, i) =>
+    `<div class="match-item">
+      <span class="match-index">#${i+1}</span>
+      <span class="match-val">${escHtml(match.val)}</span>
+      <span class="match-pos">pos ${match.index}–${match.end}</span>
+    </div>`
+  ).join('');
+
+  document.getElementById('matchList').innerHTML = listHTML + (matches.length>100?`<div style="font-size:0.72rem;color:var(--muted);padding:0.5rem">...and ${matches.length-100} more matches</div>`:'');
+  document.getElementById('resultArea').style.display = 'block';
+}
+
+async function copyMatches(){
+  const items = document.querySelectorAll('.match-val');
+  if(!items.length){ setStatus('No matches to copy.','error'); return; }
+  const text = [...items].map(el=>el.textContent).join('\n');
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus('All matches copied to clipboard!','success');
+  } catch(e){
+    setStatus('Copy failed — please copy manually.','error');
+  }
+  setTimeout(()=>setStatus(''),2000);
+}
+
+function setStatus(msg,type){
+  const s=document.getElementById('status');
+  s.textContent=msg; s.className='status-msg'+(type?' '+type:'');
+}
+</script>
+</body></html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interview Question Generator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.q-card{padding:1rem 1.25rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px;margin-bottom:0.5rem}
+.q-num{font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.3rem}
+.q-text{font-size:0.88rem;color:var(--text);line-height:1.5}
+.q-tip{font-size:0.72rem;color:var(--muted);margin-top:0.4rem;line-height:1.5}
+.category-label{font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin:1.25rem 0 0.6rem;padding-bottom:0.5rem;border-bottom:0.5px solid var(--line)}
+.iq-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+@media(max-width:640px){.iq-form-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../resume.html">← Resume & Career</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../resume.html">Resume & Career</a><span>/</span><span>Interview Question Generator</span></div>
+  <h1 class="page-title">Interview Question Generator</h1>
+  <p class="page-desc">Enter the role you're interviewing for and get a personalised set of likely interview questions with answering tips.</p>
+</div>
+<div class="tool-workspace">
+  <div class="iq-form-grid">
+    <div class="option-group">
+      <div class="option-label">Role / Job Title *</div>
+      <input type="text" class="option-input" id="role" placeholder="Software Engineer / Product Manager" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Experience Level</div>
+      <select class="option-select" id="level" style="width:100%">
+        <option value="fresher">Fresher / Entry Level (0-2 yrs)</option>
+        <option value="mid">Mid Level (3-6 yrs)</option>
+        <option value="senior">Senior / Lead (7+ yrs)</option>
+      </select>
+    </div>
+    <div class="option-group">
+      <div class="option-label">Industry</div>
+      <select class="option-select" id="industry" style="width:100%">
+        <option value="tech">Technology / IT</option>
+        <option value="finance">Finance / Banking</option>
+        <option value="marketing">Marketing / Sales</option>
+        <option value="healthcare">Healthcare</option>
+        <option value="general">General / Other</option>
+      </select>
+    </div>
+    <div class="option-group">
+      <div class="option-label">Interview Type</div>
+      <select class="option-select" id="type" style="width:100%">
+        <option value="all">All types</option>
+        <option value="hr">HR / Behavioural</option>
+        <option value="technical">Technical</option>
+        <option value="managerial">Managerial</option>
+      </select>
+    </div>
+  </div>
+  <div class="option-group" style="margin-bottom:1.5rem">
+    <div class="option-label">Your Key Skills (optional — for tailored questions)</div>
+    <input type="text" class="option-input" id="skills" placeholder="Python, SQL, leadership, agile..." style="width:100%">
+  </div>
+  <div class="btn-row" style="margin-top:0;margin-bottom:1.5rem">
+    <button class="btn-primary" onclick="generate()">Generate Questions</button>
+    <button class="btn-secondary" onclick="copyAll()">📋 Copy All Questions</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div id="questionsArea" style="display:none"></div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+const QUESTIONS = {
+  hr: [
+    {q:'Tell me about yourself.',tip:'Use the Present-Past-Future structure. 2 minutes max. End with why you want this role.'},
+    {q:'Why do you want to work at our company?',tip:'Research the company beforehand. Mention specific products, culture, or mission that excites you.'},
+    {q:'Where do you see yourself in 5 years?',tip:'Show ambition but be realistic. Align your growth with the company\'s direction.'},
+    {q:'What is your greatest strength?',tip:'Pick one strength relevant to the role and back it with a specific example.'},
+    {q:'What is your greatest weakness?',tip:'Choose a real weakness you\'re actively working to improve. Don\'t say "I work too hard."'},
+    {q:'Why are you leaving your current job?',tip:'Stay positive. Mention growth opportunities, not complaints about current employer.'},
+    {q:'Tell me about a time you failed. How did you handle it?',tip:'Use STAR method. Show what you learned, not just that you failed.'},
+    {q:'How do you handle pressure and tight deadlines?',tip:'Give a specific example. Show your process, not just that you survived.'},
+    {q:'What motivates you?',tip:'Be genuine. Relate your motivators to the role and company mission.'},
+    {q:'Do you prefer working alone or in a team?',tip:'Both! Give examples of excelling in each setting.'},
+  ],
+  technical: [
+    {q:'Walk me through your most challenging technical project.',tip:'Structure: problem → your role → approach → result. Quantify the impact.'},
+    {q:'How do you stay up to date with new technologies?',tip:'Mention specific sources: blogs, courses, GitHub, conferences, side projects.'},
+    {q:'Explain a technical concept to a non-technical person.',tip:'Choose something you know well. Use an analogy. Shows communication skills.'},
+    {q:'How do you approach debugging a difficult issue?',tip:'Show a systematic process: reproduce, isolate, hypothesise, test, fix, verify.'},
+    {q:'Describe your experience with [skill from your profile].',tip:'Prepare 2-3 specific projects or examples for each skill you listed.'},
+    {q:'How do you ensure code quality and maintainability?',tip:'Mention code reviews, testing, documentation, design patterns, clean code principles.'},
+    {q:'Tell me about a time you had to learn a new technology quickly.',tip:'Show adaptability and self-learning ability. Mention the specific tech and outcome.'},
+    {q:'What is your approach to system design / architecture?',tip:'Show you think about scalability, reliability, maintainability and trade-offs.'},
+  ],
+  managerial: [
+    {q:'Tell me about a time you led a team through a difficult situation.',tip:'Use STAR. Focus on your leadership approach, communication and the outcome.'},
+    {q:'How do you handle conflict within your team?',tip:'Show empathy, fairness, and that you resolve conflict — not avoid it.'},
+    {q:'Describe your management style.',tip:'Be specific. Combine your natural style with flexibility based on the team\'s needs.'},
+    {q:'How do you prioritise tasks when everything is urgent?',tip:'Mention frameworks (Eisenhower matrix, MoSCoW). Show stakeholder management.'},
+    {q:'How do you give constructive feedback to underperforming team members?',tip:'Show empathy + directness. Mention specific, actionable feedback and follow-up.'},
+    {q:'Tell me about a project you delivered under budget or ahead of schedule.',tip:'Quantify results. Explain your planning and execution strategy.'},
+  ],
+  fresher: [
+    {q:'What have you learned from your academic projects or internships?',tip:'Pick the most relevant project. Focus on skills gained and challenges overcome.'},
+    {q:'Why did you choose this field / career path?',tip:'Be genuine. Show passion and how your skills align with the role.'},
+    {q:'How do you plan to contribute to this role despite limited experience?',tip:'Highlight enthusiasm, learning speed, academic achievements, and relevant projects.'},
+    {q:'What extra-curricular activities have you done that relate to this role?',tip:'Hackathons, clubs, open source, competitions — show initiative beyond coursework.'},
+  ],
+  senior: [
+    {q:'How have you influenced technical direction or company strategy?',tip:'Give a specific example where your input changed the technical roadmap or business direction.'},
+    {q:'How do you mentor junior team members?',tip:'Show your mentoring style, specific examples, and the outcomes for the mentees.'},
+    {q:'Describe a time you had to influence without authority.',tip:'Show stakeholder management, communication, and building consensus.'},
+    {q:'How do you balance technical debt with feature delivery?',tip:'Show you understand business context and can make pragmatic trade-off decisions.'},
+  ]
+};
+
+let generatedQuestions = [];
+
+function generate(){
+  const role = document.getElementById('role').value.trim();
+  if(!role){ setStatus('Please enter a job role.','error'); return; }
+
+  const level = document.getElementById('level').value;
+  const interviewType = document.getElementById('type').value;
+  const skills = document.getElementById('skills').value.trim();
+  const skillList = skills ? skills.split(',').map(s=>s.trim()).filter(s=>s) : [];
+
+  let questions = [];
+
+  const addCat = (qs, catLabel) => {
+    if(qs.length) questions.push({category: catLabel, items: qs});
+  };
+
+  if(interviewType==='all'||interviewType==='hr'){
+    addCat(QUESTIONS.hr.slice(0,6), 'HR & Behavioural');
+  }
+  if(interviewType==='all'||interviewType==='technical'){
+    let techQs = [...QUESTIONS.technical];
+    if(skillList.length){
+      skillList.slice(0,2).forEach(skill => {
+        techQs.push({q:`Describe a specific project where you used ${skill}. What was your approach and the outcome?`, tip:`Be specific — project name, your role, the problem solved, and measurable result.`});
+        techQs.push({q:`What are the most common challenges you face when working with ${skill}?`, tip:`Show depth of knowledge by discussing real-world trade-offs and how you handle them.`});
+      });
+    }
+    addCat(techQs.slice(0,6), 'Technical');
+  }
+  if(interviewType==='all'||interviewType==='managerial'){
+    if(level==='senior'||level==='mid') addCat(QUESTIONS.managerial.slice(0,4), 'Managerial & Leadership');
+    if(level==='senior') addCat(QUESTIONS.senior, 'Senior-Level Questions');
+  }
+  if(level==='fresher') addCat(QUESTIONS.fresher, 'Fresher-Specific');
+
+  // Role-specific question
+  questions[0]?.items?.unshift({
+    q:`What specifically attracted you to this ${role} role and why do you think you are a strong fit?`,
+    tip:`Research the JD thoroughly. Map your experience to their requirements point by point.`
+  });
+
+  generatedQuestions = questions;
+
+  let html = '';
+  let qNum = 1;
+  questions.forEach(cat => {
+    html += `<div class="category-label">${cat.category}</div>`;
+    cat.items.forEach(item => {
+      html += `<div class="q-card">
+        <div class="q-num">Q${qNum++}</div>
+        <div class="q-text">${item.q}</div>
+        <div class="q-tip">💡 Tip: ${item.tip}</div>
+      </div>`;
+    });
+  });
+
+  document.getElementById('questionsArea').innerHTML = html;
+  document.getElementById('questionsArea').style.display='block';
+  setStatus(`${qNum-1} interview questions generated for "${role}"`, 'success');
+}
+
+async function copyAll(){
+  if(!generatedQuestions.length){ setStatus('Generate questions first.','error'); return; }
+  let text = '';
+  let n = 1;
+  generatedQuestions.forEach(cat => {
+    text += `\n${cat.category.toUpperCase()}\n${'─'.repeat(40)}\n`;
+    cat.items.forEach(item => { text += `\nQ${n++}. ${item.q}\n   Tip: ${item.tip}\n`; });
+  });
+  try {
+    await navigator.clipboard.writeText(text.trim());
+    setStatus('All questions copied!','success');
+  } catch(e){ setStatus('Copy failed — please copy manually.','error'); }
+  setTimeout(()=>setStatus(''),2500);
+}
+
+function setStatus(msg,type){ const s=document.getElementById('status'); s.textContent=msg; s.className='status-msg'+(type?' '+type:''); }
+</script>
+</body></html>

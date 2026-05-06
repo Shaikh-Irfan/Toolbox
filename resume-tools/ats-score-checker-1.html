@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATS Score Checker — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.score-circle{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;margin:1.5rem 0 1rem;border:3px solid var(--card-border)}
+.score-num{font-family:var(--serif);font-size:2.2rem;line-height:1}
+.score-label{font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:0.2rem}
+.check-item{display:flex;align-items:flex-start;gap:0.75rem;padding:0.65rem 0;border-bottom:0.5px solid rgba(255,255,255,0.05);font-size:0.82rem}
+.check-icon{font-size:0.9rem;margin-top:1px;flex-shrink:0}
+.check-label{color:var(--text);flex:1}
+.check-note{color:var(--muted);font-size:0.72rem;margin-top:0.15rem}
+.keyword-wrap{display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.75rem}
+.kw-found{padding:0.2rem 0.5rem;background:rgba(107,255,184,0.1);border:0.5px solid rgba(107,255,184,0.25);color:#6bffb8;border-radius:2px;font-size:0.72rem}
+.kw-miss{padding:0.2rem 0.5rem;background:rgba(255,107,107,0.08);border:0.5px solid rgba(255,107,107,0.2);color:#ff7878;border-radius:2px;font-size:0.72rem}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../resume.html">← Resume & Career</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../resume.html">Resume & Career</a><span>/</span><span>ATS Score Checker</span></div>
+  <h1 class="page-title">ATS Score Checker</h1>
+  <p class="page-desc">Paste your resume and optionally a job description. Get an ATS compatibility score with specific improvement suggestions.</p>
+</div>
+<div class="tool-workspace">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+    <div>
+      <div class="option-label" style="margin-bottom:0.4rem">Your Resume *</div>
+      <textarea class="textarea-tool" id="resumeText" placeholder="Paste your full resume text here..." style="min-height:280px"></textarea>
+    </div>
+    <div>
+      <div class="option-label" style="margin-bottom:0.4rem">Job Description (optional — for keyword match)</div>
+      <textarea class="textarea-tool" id="jdText" placeholder="Paste the job description here for keyword analysis..." style="min-height:280px"></textarea>
+    </div>
+  </div>
+  <div class="btn-row" style="margin-top:0;margin-bottom:1.5rem">
+    <button class="btn-primary" onclick="analyze()">Analyse Resume</button>
+    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div id="resultArea" style="display:none">
+    <div style="display:flex;align-items:center;gap:2rem;flex-wrap:wrap">
+      <div class="score-circle" id="scoreCircle">
+        <div class="score-num" id="scoreNum">0</div>
+        <div class="score-label">ATS Score</div>
+      </div>
+      <div>
+        <div style="font-family:var(--serif);font-size:1.5rem;color:var(--text)" id="scoreVerdict">—</div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-top:0.3rem;max-width:36ch" id="scoreAdvice"></div>
+      </div>
+    </div>
+    <div style="margin-top:1.5rem">
+      <div class="option-label" style="margin-bottom:0.75rem">Checklist</div>
+      <div id="checkList"></div>
+    </div>
+    <div id="keywordSection" style="display:none;margin-top:1.5rem">
+      <div class="option-label" style="margin-bottom:0.5rem">Keyword Match</div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem" id="keywordSummary"></div>
+      <div class="keyword-wrap" id="keywordWrap"></div>
+    </div>
+  </div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function analyze(){
+  const resume = document.getElementById('resumeText').value.trim();
+  if(!resume){ setStatus('Please paste your resume first.','error'); return; }
+
+  const jd = document.getElementById('jdText').value.trim();
+  const lower = resume.toLowerCase();
+  let score = 0;
+  const checks = [];
+
+  // 1. Length check
+  const words = resume.split(/\s+/).filter(w=>w).length;
+  const lengthOk = words >= 300 && words <= 800;
+  checks.push({ok:lengthOk, label:`Word count: ${words} words`, note: lengthOk ? 'Good length (300-800 words recommended)' : words<300 ? 'Too short — ATS may skip thin resumes. Add more detail.' : 'Too long — aim for 1 page (under 800 words).'});
+  if(lengthOk) score += 15;
+
+  // 2. Contact info
+  const hasEmail = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/.test(resume);
+  checks.push({ok:hasEmail, label:'Email address detected', note: hasEmail ? 'Found email in resume.' : 'No email found — ATS and recruiters need your email.'});
+  if(hasEmail) score += 10;
+
+  const hasPhone = /[\+]?[\d\s\-\(\)]{10,}/.test(resume);
+  checks.push({ok:hasPhone, label:'Phone number detected', note: hasPhone ? 'Phone number found.' : 'Add your phone number.'});
+  if(hasPhone) score += 5;
+
+  // 3. Section headers
+  const sections = ['experience','education','skills','summary','objective','projects','certifications','achievements'];
+  const foundSections = sections.filter(s => lower.includes(s));
+  const sectionsOk = foundSections.length >= 3;
+  checks.push({ok:sectionsOk, label:`Section headers: ${foundSections.join(', ')||'none found'}`, note: sectionsOk ? 'Good structure with clear sections.' : 'Add clear section headers: EXPERIENCE, EDUCATION, SKILLS etc.'});
+  if(sectionsOk) score += 20;
+
+  // 4. Bullet points
+  const bullets = (resume.match(/[•\-\*▪→]\s/g)||[]).length;
+  const bulletsOk = bullets >= 5;
+  checks.push({ok:bulletsOk, label:`Bullet points: ${bullets} found`, note: bulletsOk ? 'Good use of bullet points.' : 'Use bullet points (• or -) to list your achievements — ATS parses these better.'});
+  if(bulletsOk) score += 10;
+
+  // 5. Action verbs
+  const actionVerbs = ['developed','managed','led','built','created','designed','implemented','achieved','improved','increased','reduced','delivered','launched','analysed','analyzed','collaborated','coordinated','executed','established','generated'];
+  const foundVerbs = actionVerbs.filter(v => lower.includes(v));
+  const verbsOk = foundVerbs.length >= 4;
+  checks.push({ok:verbsOk, label:`Action verbs: ${foundVerbs.length} found`, note: verbsOk ? `Good: ${foundVerbs.slice(0,5).join(', ')} etc.` : 'Use strong action verbs: developed, led, built, improved, achieved etc.'});
+  if(verbsOk) score += 15;
+
+  // 6. Quantified achievements
+  const hasNumbers = /\d+[\s]*(%|x|times|lakh|crore|million|billion|k\b|users|clients|projects|members|years)/.test(lower);
+  checks.push({ok:hasNumbers, label:'Quantified achievements', note: hasNumbers ? 'Great — numbers and metrics found in your resume.' : 'Add metrics: "Improved performance by 30%", "Managed team of 8" etc.'});
+  if(hasNumbers) score += 15;
+
+  // 7. No tables/columns (heuristic — if very short lines mixed with very long)
+  const lines = resume.split('\n').filter(l=>l.trim());
+  const shortLines = lines.filter(l=>l.trim().length < 20).length;
+  const tableWarning = shortLines > lines.length * 0.4;
+  checks.push({ok:!tableWarning, label:'Layout: text-based (no tables detected)', note: !tableWarning ? 'Layout looks ATS-friendly.' : 'Possible table/column layout detected. ATS systems struggle with tables — use a single-column format.'});
+  if(!tableWarning) score += 10;
+
+  // 8. File type reminder
+  checks.push({ok:true, label:'Submit as PDF or Word (.docx)', note:'Always submit as PDF or .docx unless job posting says otherwise — avoid .pages or image formats.'});
+
+  // Keyword matching
+  let kwHTML = '', kwSummary = '';
+  if(jd){
+    const jdLower = jd.toLowerCase();
+    const jdWords = [...new Set(jdLower.match(/\b[a-zA-Z][a-zA-Z.+#]{3,}\b/g)||[])].filter(w=>!['with','this','that','have','from','your','will','about','they','their','also','more','which'].includes(w));
+    const important = jdWords.slice(0,40);
+    const found = important.filter(w => lower.includes(w));
+    const missing = important.filter(w => !lower.includes(w)).slice(0,20);
+    const matchPct = Math.round((found.length/important.length)*100);
+    score = Math.min(100, score + Math.round(matchPct*0.1));
+    kwSummary = `${found.length} of ${important.length} job keywords found in your resume (${matchPct}% match)`;
+    kwHTML = found.slice(0,20).map(w=>`<span class="kw-found">✓ ${w}</span>`).join('') +
+             missing.slice(0,15).map(w=>`<span class="kw-miss">✗ ${w}</span>`).join('');
+    document.getElementById('keywordSection').style.display='block';
+    document.getElementById('keywordSummary').textContent = kwSummary;
+    document.getElementById('keywordWrap').innerHTML = kwHTML;
+  } else {
+    document.getElementById('keywordSection').style.display='none';
+  }
+
+  score = Math.min(100, score);
+  const circle = document.getElementById('scoreCircle');
+  const color = score>=80?'#6bffb8':score>=60?'#ffc850':'#ff7878';
+  circle.style.borderColor = color;
+  document.getElementById('scoreNum').textContent = score;
+  document.getElementById('scoreNum').style.color = color;
+
+  let verdict, advice;
+  if(score>=80){verdict='Excellent ATS Score';advice='Your resume is well-optimised for ATS. Recruiters will likely see it.';}
+  else if(score>=60){verdict='Good — Minor Issues';advice='Your resume will pass most ATS filters but could be stronger. Fix the flagged items.';}
+  else if(score>=40){verdict='Needs Improvement';advice='Several ATS issues found. Fix them to avoid being filtered out before a human reads your resume.';}
+  else{verdict='Poor ATS Compatibility';advice='Your resume may be rejected by ATS before a recruiter sees it. Please address the issues below.';}
+  document.getElementById('scoreVerdict').textContent=verdict;
+  document.getElementById('scoreAdvice').textContent=advice;
+
+  document.getElementById('checkList').innerHTML=checks.map(c=>
+    `<div class="check-item">
+      <div class="check-icon">${c.ok?'✅':'❌'}</div>
+      <div><div class="check-label">${c.label}</div><div class="check-note">${c.note}</div></div>
+    </div>`).join('');
+
+  document.getElementById('resultArea').style.display='block';
+  setStatus('');
+}
+
+function clearAll(){
+  document.getElementById('resumeText').value='';
+  document.getElementById('jdText').value='';
+  document.getElementById('resultArea').style.display='none';
+  setStatus('');
+}
+
+function setStatus(msg,type){
+  const s=document.getElementById('status');
+  s.textContent=msg; s.className='status-msg'+(type?' '+type:'');
+}
+</script>
+</body></html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resize Signature — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../image-tools.html">← Image & Design</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../image-tools.html">Image & Design</a><span>/</span><span>Resize Signature</span></div>
+  <h1 class="page-title">Resize Signature</h1>
+  <p class="page-desc">Resize your signature image to exact pixel dimensions. Transparency is preserved in PNG output.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept="image/*">
+    <div class="drop-icon">🔲</div>
+    <div class="drop-title">Drop your signature image here</div>
+    <div class="drop-sub">PNG (transparent) or JPG</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">✍️</div>
+    <div class="file-info-text"><div class="file-info-name" id="fname"></div><div class="file-info-size" id="fsize"></div></div>
+    <button class="file-remove" onclick="reset()">✕</button>
+  </div>
+  <div id="controls" style="display:none">
+    <div id="origPreviewWrap" style="margin-bottom:1rem">
+      <div class="option-label" style="margin-bottom:0.4rem">Original</div>
+      <img id="origPreview" style="max-width:300px;max-height:120px;border-radius:3px;border:0.5px solid rgba(255,255,255,0.1);background:repeating-conic-gradient(#333 0% 25%,#222 0% 50%) 0 0/16px 16px">
+    </div>
+    <div class="options-row">
+      <div class="option-group">
+        <div class="option-label">Width (px)</div>
+        <input type="number" class="option-input" id="wVal" min="1" style="min-width:90px" oninput="onDimChange('w')">
+      </div>
+      <div class="option-group" style="justify-content:flex-end;padding-top:1.5rem">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--muted);cursor:pointer">
+          <input type="checkbox" id="lockRatio" checked> Lock ratio
+        </label>
+      </div>
+      <div class="option-group">
+        <div class="option-label">Height (px)</div>
+        <input type="number" class="option-input" id="hVal" min="1" style="min-width:90px" oninput="onDimChange('h')">
+      </div>
+    </div>
+    <div class="options-row" style="margin-top:0.5rem">
+      <div class="option-group">
+        <div class="option-label">Background</div>
+        <select class="option-select" id="bgType">
+          <option value="transparent">Transparent (PNG)</option>
+          <option value="white">White</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-primary" onclick="doResize()">Resize Signature</button>
+      <button class="btn-secondary" onclick="reset()">Choose another</button>
+    </div>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div id="resultArea" style="display:none;margin-top:1.5rem">
+    <div class="option-label" style="margin-bottom:0.75rem">Result</div>
+    <img id="resultImg" style="max-width:300px;max-height:150px;border-radius:3px;border:0.5px solid rgba(255,255,255,0.1);background:repeating-conic-gradient(#333 0% 25%,#222 0% 50%) 0 0/16px 16px;margin-bottom:1rem">
+    <div class="status-msg" id="resultInfo"></div>
+    <div class="btn-row" style="margin-top:0.75rem">
+      <button class="btn-primary" id="dlBtn">⬇ Download Resized Signature</button>
+      <button class="btn-secondary" onclick="reset()">Resize another</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+let origImg=null, origFile=null, origW=0, origH=0;
+
+function downloadBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),15000);}
+function loadImg(file){return new Promise((res,rej)=>{const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(url);res(img);};img.onerror=rej;img.src=url;});}
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(2)+' MB';}
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+async function handleFile(f){
+  if(!f||!f.type.startsWith('image/')){setStatus('Please upload an image','error');return;}
+  origFile=f;origImg=await loadImg(f);
+  origW=origImg.naturalWidth;origH=origImg.naturalHeight;
+  document.getElementById('fname').textContent=f.name;
+  document.getElementById('fsize').textContent=formatSize(f.size);
+  document.getElementById('fileInfo').style.display='flex';
+  dz.style.display='none';
+  const url=URL.createObjectURL(f);
+  document.getElementById('origPreview').src=url;
+  document.getElementById('wVal').value=origW;
+  document.getElementById('hVal').value=origH;
+  document.getElementById('controls').style.display='block';
+  setStatus('');
+}
+
+function onDimChange(which){
+  if(!document.getElementById('lockRatio').checked||!origW)return;
+  const ratio=origW/origH;
+  if(which==='w'){
+    const w=parseInt(document.getElementById('wVal').value)||1;
+    document.getElementById('hVal').value=Math.round(w/ratio);
+  }else{
+    const h=parseInt(document.getElementById('hVal').value)||1;
+    document.getElementById('wVal').value=Math.round(h*ratio);
+  }
+}
+
+function doResize(){
+  if(!origImg)return;
+  const tw=parseInt(document.getElementById('wVal').value);
+  const th=parseInt(document.getElementById('hVal').value);
+  const bg=document.getElementById('bgType').value;
+  if(!tw||!th){setStatus('Please enter valid dimensions','error');return;}
+  const canvas=document.createElement('canvas');
+  canvas.width=tw;canvas.height=th;
+  const ctx=canvas.getContext('2d');
+  if(bg==='white'){ctx.fillStyle='#ffffff';ctx.fillRect(0,0,tw,th);}
+  ctx.drawImage(origImg,0,0,tw,th);
+  const fmt=bg==='transparent'?'image/png':'image/jpeg';
+  canvas.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    document.getElementById('resultImg').src=url;
+    document.getElementById('resultInfo').textContent=`${tw}×${th}px · ${formatSize(blob.size)}`;
+    const ext=fmt==='image/png'?'png':'jpg';
+    const name=(origFile.name.replace(/\.[^.]+$/,'')||'signature')+'-resized.'+ext;
+    document.getElementById('dlBtn').onclick=()=>downloadBlob(blob,name);
+    document.getElementById('resultArea').style.display='block';
+    setStatus('Done!','success');
+  },fmt,0.95);
+}
+
+function reset(){
+  origImg=null;origFile=null;origW=0;origH=0;
+  document.getElementById('fileInput').value='';
+  document.getElementById('fileInfo').style.display='none';
+  document.getElementById('controls').style.display='none';
+  document.getElementById('resultArea').style.display='none';
+  dz.style.display='block';
+  setStatus('');
+}
+</script>
+</body></html>

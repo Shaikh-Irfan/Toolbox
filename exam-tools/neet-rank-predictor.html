@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEET Rank Predictor — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.big-result{font-family:var(--serif);font-size:3rem;color:#6bffb8;margin:1.5rem 0 0.25rem}
+.result-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:0.75rem;margin-top:1.5rem}
+.rcard{padding:1.1rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px}
+.rcard-label{font-size:0.62rem;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted);margin-bottom:0.3rem}
+.rcard-val{font-family:var(--serif);font-size:1.3rem;color:var(--text)}
+.score-breakdown{display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.sb-field{display:flex;flex-direction:column;gap:0.3rem}
+.disclaimer{font-size:0.72rem;color:var(--muted);margin-top:1.25rem;padding:0.85rem 1rem;background:rgba(255,200,80,0.05);border:0.5px solid rgba(255,200,80,0.15);border-radius:4px;line-height:1.6}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../exam-tools.html">← Exam Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../exam-tools.html">Exam Tools</a><span>/</span><span>NEET Rank Predictor</span></div>
+  <h1 class="page-title">NEET Rank Predictor</h1>
+  <p class="page-desc">Enter your NEET score to estimate your expected rank, percentile and college admission chances.</p>
+</div>
+<div class="tool-workspace">
+  <div style="max-width:520px">
+    <div class="option-group" style="margin-bottom:1.25rem">
+      <div class="option-label">Your NEET Score (out of 720)</div>
+      <input type="number" class="option-input" id="neetScore" value="550" min="0" max="720" oninput="calc()" style="width:100%">
+    </div>
+    <div class="score-breakdown">
+      <div class="sb-field">
+        <div class="option-label">Physics (out of 180)</div>
+        <input type="number" class="option-input" id="physics" value="140" min="0" max="180" oninput="autoSum()" style="min-width:100px">
+      </div>
+      <div class="sb-field">
+        <div class="option-label">Chemistry (out of 180)</div>
+        <input type="number" class="option-input" id="chemistry" value="150" min="0" max="180" oninput="autoSum()" style="min-width:100px">
+      </div>
+      <div class="sb-field">
+        <div class="option-label">Biology (out of 360)</div>
+        <input type="number" class="option-input" id="biology" value="260" min="0" max="360" oninput="autoSum()" style="min-width:100px">
+      </div>
+    </div>
+    <p style="font-size:0.72rem;color:var(--muted);margin-bottom:1.25rem">Fill individual subjects to auto-calculate total score, or enter total score directly above.</p>
+  </div>
+
+  <div class="result-grid" id="resultGrid"></div>
+  <div class="disclaimer">⚠️ This is an estimated prediction based on historical NEET data. Actual rank depends on total applicants, difficulty level, and cutoffs in the year of your exam. Always verify with official NTA data.</div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+// Rank estimation based on historical NEET score-rank data (approximate)
+const SCORE_RANK_MAP = [
+  {score:720,rank:1},{score:715,rank:5},{score:710,rank:15},{score:700,rank:50},
+  {score:690,rank:120},{score:680,rank:250},{score:670,rank:500},{score:660,rank:900},
+  {score:650,rank:1500},{score:640,rank:2500},{score:630,rank:4000},{score:620,rank:6000},
+  {score:610,rank:9000},{score:600,rank:13000},{score:590,rank:18000},{score:580,rank:24000},
+  {score:570,rank:32000},{score:560,rank:42000},{score:550,rank:54000},{score:540,rank:68000},
+  {score:530,rank:85000},{score:520,rank:105000},{score:510,rank:128000},{score:500,rank:155000},
+  {score:490,rank:185000},{score:480,rank:218000},{score:470,rank:255000},{score:460,rank:295000},
+  {score:450,rank:338000},{score:440,rank:385000},{score:430,rank:435000},{score:420,rank:488000},
+  {score:410,rank:544000},{score:400,rank:602000},{score:390,rank:663000},{score:380,rank:726000},
+  {score:370,rank:792000},{score:360,rank:860000},{score:350,rank:930000},{score:340,rank:1000000},
+  {score:300,rank:1200000},{score:250,rank:1500000},{score:200,rank:1750000},{score:150,rank:1900000},
+  {score:0,rank:2000000}
+];
+
+function estimateRank(score){
+  score = Math.max(0, Math.min(720, score));
+  for(let i=0;i<SCORE_RANK_MAP.length-1;i++){
+    const hi=SCORE_RANK_MAP[i], lo=SCORE_RANK_MAP[i+1];
+    if(score<=hi.score && score>=lo.score){
+      const t=(hi.score-score)/(hi.score-lo.score);
+      return Math.round(hi.rank + t*(lo.rank-hi.rank));
+    }
+  }
+  return SCORE_RANK_MAP[SCORE_RANK_MAP.length-1].rank;
+}
+
+function getCategory(rank){
+  if(rank<=100) return {cat:'Top 100',color:'#6bffb8',chance:'AIIMS Delhi possible'};
+  if(rank<=1000) return {cat:'Top 1,000',color:'#6bffb8',chance:'AIIMS / top MBBS colleges'};
+  if(rank<=10000) return {cat:'Top 10,000',color:'#6bffb8',chance:'Government MBBS (General) likely'};
+  if(rank<=50000) return {cat:'Top 50,000',color:'#ffc850',chance:'Government MBBS possible (state quota)'};
+  if(rank<=100000) return {cat:'Top 1 Lakh',color:'#ffc850',chance:'Private MBBS / BDS possible'};
+  if(rank<=300000) return {cat:'Top 3 Lakh',color:'#ff9060',chance:'Private BDS / AYUSH likely'};
+  if(rank<=600000) return {cat:'Top 6 Lakh',color:'#ff7878',chance:'AYUSH / private paramedical'};
+  return {cat:'Below cutoff',color:'#ff7878',chance:'May not qualify for MBBS/BDS this year'};
+}
+
+function autoSum(){
+  const p=parseInt(document.getElementById('physics').value)||0;
+  const c=parseInt(document.getElementById('chemistry').value)||0;
+  const b=parseInt(document.getElementById('biology').value)||0;
+  document.getElementById('neetScore').value = p+c+b;
+  calc();
+}
+
+function calc(){
+  const score = parseInt(document.getElementById('neetScore').value)||0;
+  const rank = estimateRank(score);
+  const percentile = ((2000000-rank)/2000000*100);
+  const {cat,color,chance} = getCategory(rank);
+
+  document.getElementById('resultGrid').innerHTML = `
+    <div class="rcard"><div class="rcard-label">Your Score</div><div class="rcard-val">${score} / 720</div></div>
+    <div class="rcard"><div class="rcard-label">Estimated Rank</div><div class="rcard-val" style="color:${color}">${rank.toLocaleString('en-IN')}</div></div>
+    <div class="rcard"><div class="rcard-label">Approx Percentile</div><div class="rcard-val">${Math.min(99.99,percentile).toFixed(2)}%</div></div>
+    <div class="rcard"><div class="rcard-label">Category</div><div class="rcard-val" style="color:${color}">${cat}</div></div>
+    <div class="rcard" style="grid-column:1/-1"><div class="rcard-label">Admission Outlook</div><div class="rcard-val" style="font-size:1rem">${chance}</div></div>
+  `;
+}
+calc();
+</script>
+</body></html>

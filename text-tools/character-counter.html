@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Character Counter — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.stat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:0.75rem; margin-bottom:1.5rem; }
+.stat-box { padding:1rem; background:var(--card-bg); border:0.5px solid var(--card-border); border-radius:4px; text-align:center; }
+.stat-num { font-family:var(--serif); font-size:1.8rem; color:var(--text); }
+.stat-label { font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-top:0.25rem; }
+.limit-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:0.75rem; margin-top:1.5rem; }
+.limit-card { padding:1rem 1.25rem; background:var(--card-bg); border:0.5px solid var(--card-border); border-radius:4px; }
+.limit-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; }
+.limit-name { font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
+.limit-count { font-family:var(--serif); font-size:1.1rem; }
+.limit-bar-track { height:4px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden; }
+.limit-bar-fill { height:100%; border-radius:2px; transition:width 0.3s, background 0.3s; }
+.limit-note { font-size:0.68rem; color:var(--muted); margin-top:0.4rem; }
+.limit-ok { color:#6bffb8; }
+.limit-warn { color:#ffc850; }
+.limit-over { color:#ff7878; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../text-tools.html">← Text Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../text-tools.html">Text Tools</a><span>/</span><span>Character Counter</span></div>
+  <h1 class="page-title">Character Counter</h1>
+  <p class="page-desc">Count characters, words and sentences. See how your text fits within Twitter, Instagram, LinkedIn and other platform limits.</p>
+</div>
+<div class="tool-workspace">
+  <div class="stat-grid">
+    <div class="stat-box"><div class="stat-num" id="chars">0</div><div class="stat-label">Characters</div></div>
+    <div class="stat-box"><div class="stat-num" id="charsNoSpace">0</div><div class="stat-label">No Spaces</div></div>
+    <div class="stat-box"><div class="stat-num" id="words">0</div><div class="stat-label">Words</div></div>
+    <div class="stat-box"><div class="stat-num" id="sentences">0</div><div class="stat-label">Sentences</div></div>
+    <div class="stat-box"><div class="stat-num" id="lines">0</div><div class="stat-label">Lines</div></div>
+    <div class="stat-box"><div class="stat-num" id="readTime">0</div><div class="stat-label">Min Read</div></div>
+  </div>
+
+  <textarea class="textarea-tool" id="inputText" placeholder="Start typing or paste your text here..." style="min-height:200px" oninput="count()"></textarea>
+
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="document.getElementById('inputText').value='';count()">Clear</button>
+    <button class="btn-secondary" onclick="copyText()">📋 Copy</button>
+  </div>
+
+  <div style="margin-top:2rem">
+    <div class="option-label" style="margin-bottom:0.75rem">Platform Limits</div>
+    <div class="limit-grid">
+
+      <div class="limit-card">
+        <div class="limit-header">
+          <span class="limit-name">𝕏 Twitter / X</span>
+          <span class="limit-count" id="twitterCount"><span id="twitterUsed">0</span><span style="color:var(--muted);font-size:0.8rem"> / 280</span></span>
+        </div>
+        <div class="limit-bar-track"><div class="limit-bar-fill" id="twitterBar" style="width:0%;background:#6bffb8"></div></div>
+        <div class="limit-note" id="twitterNote">280 characters remaining</div>
+      </div>
+
+      <div class="limit-card">
+        <div class="limit-header">
+          <span class="limit-name">📸 Instagram Caption</span>
+          <span class="limit-count" id="igCount"><span id="igUsed">0</span><span style="color:var(--muted);font-size:0.8rem"> / 2,200</span></span>
+        </div>
+        <div class="limit-bar-track"><div class="limit-bar-fill" id="igBar" style="width:0%;background:#6bffb8"></div></div>
+        <div class="limit-note" id="igNote">2,200 characters remaining</div>
+      </div>
+
+      <div class="limit-card">
+        <div class="limit-header">
+          <span class="limit-name">💼 LinkedIn Post</span>
+          <span class="limit-count" id="liCount"><span id="liUsed">0</span><span style="color:var(--muted);font-size:0.8rem"> / 3,000</span></span>
+        </div>
+        <div class="limit-bar-track"><div class="limit-bar-fill" id="liBar" style="width:0%;background:#6bffb8"></div></div>
+        <div class="limit-note" id="liNote">3,000 characters remaining</div>
+      </div>
+
+      <div class="limit-card">
+        <div class="limit-header">
+          <span class="limit-name">👻 Snapchat Caption</span>
+          <span class="limit-count" id="snapCount"><span id="snapUsed">0</span><span style="color:var(--muted);font-size:0.8rem"> / 250</span></span>
+        </div>
+        <div class="limit-bar-track"><div class="limit-bar-fill" id="snapBar" style="width:0%;background:#6bffb8"></div></div>
+        <div class="limit-note" id="snapNote">250 characters remaining</div>
+      </div>
+
+      <div class="limit-card">
+        <div class="limit-header">
+          <span class="limit-name">📘 Facebook Post</span>
+          <span class="limit-count" id="fbCount"><span id="fbUsed">0</span><span style="color:var(--muted);font-size:0.8rem"> / 63,206</span></span>
+        </div>
+        <div class="limit-bar-track"><div class="limit-bar-fill" id="fbBar" style="width:0%;background:#6bffb8"></div></div>
+        <div class="limit-note" id="fbNote">63,206 characters remaining</div>
+      </div>
+
+      <div class="limit-card">
+        <div class="limit-header">
+          <span class="limit-name">📧 Email Subject</span>
+          <span class="limit-count" id="emailCount"><span id="emailUsed">0</span><span style="color:var(--muted);font-size:0.8rem"> / 60</span></span>
+        </div>
+        <div class="limit-bar-track"><div class="limit-bar-fill" id="emailBar" style="width:0%;background:#6bffb8"></div></div>
+        <div class="limit-note" id="emailNote">60 characters recommended</div>
+      </div>
+
+    </div>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+const LIMITS = [
+  { id:'twitter', max:280 },
+  { id:'ig',      max:2200 },
+  { id:'li',      max:3000 },
+  { id:'snap',    max:250 },
+  { id:'fb',      max:63206 },
+  { id:'email',   max:60 }
+];
+
+function count(){
+  const text = document.getElementById('inputText').value;
+  const chars = text.length;
+  const words = text.trim()==='' ? 0 : text.trim().split(/\s+/).filter(w=>w).length;
+  const sentences = text.trim()==='' ? 0 : (text.match(/[.!?]+/g)||[]).length;
+  const lines = text==='' ? 0 : text.split('\n').length;
+  const readTime = Math.max(1, Math.ceil(words/200));
+
+  document.getElementById('chars').textContent = chars.toLocaleString();
+  document.getElementById('charsNoSpace').textContent = text.replace(/\s/g,'').length.toLocaleString();
+  document.getElementById('words').textContent = words.toLocaleString();
+  document.getElementById('sentences').textContent = sentences.toLocaleString();
+  document.getElementById('lines').textContent = lines.toLocaleString();
+  document.getElementById('readTime').textContent = readTime;
+
+  LIMITS.forEach(({id, max}) => {
+    const used = chars;
+    const pct = Math.min(100, (used/max)*100);
+    const remaining = max - used;
+    const over = used > max;
+    const warn = pct >= 80;
+
+    document.getElementById(id+'Used').textContent = used.toLocaleString();
+    const bar = document.getElementById(id+'Bar');
+    bar.style.width = pct+'%';
+    bar.style.background = over ? '#ff7878' : warn ? '#ffc850' : '#6bffb8';
+
+    const noteEl = document.getElementById(id+'Note');
+    const countEl = document.getElementById(id+'Count');
+    if(over){
+      noteEl.textContent = `${Math.abs(remaining).toLocaleString()} characters over limit`;
+      noteEl.className = 'limit-note limit-over';
+      countEl.querySelector('span:first-child').className = 'limit-over';
+    } else {
+      noteEl.textContent = `${remaining.toLocaleString()} characters remaining`;
+      noteEl.className = `limit-note ${warn?'limit-warn':'limit-ok'}`;
+      countEl.querySelector('span:first-child').className = warn?'limit-warn':'limit-ok';
+    }
+  });
+}
+
+async function copyText(){
+  const text = document.getElementById('inputText').value;
+  if(!text){ document.getElementById('status').textContent='Nothing to copy.'; return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    document.getElementById('status').textContent='Copied!';
+    document.getElementById('status').className='status-msg success';
+  } catch(e){
+    document.getElementById('status').textContent='Select text manually and press Ctrl+C.';
+    document.getElementById('status').className='status-msg';
+  }
+  setTimeout(()=>{ document.getElementById('status').textContent=''; },2000);
+}
+</script>
+</body></html>

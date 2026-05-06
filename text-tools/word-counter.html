@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Counter — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:0.75rem;margin-bottom:1.5rem}
+.stat-box{padding:1rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px;text-align:center}
+.stat-num{font-family:var(--serif);font-size:1.8rem;color:var(--text)}
+.stat-label{font-size:0.62rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-top:0.25rem}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../text-tools.html">← Text Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../text-tools.html">Text Tools</a><span>/</span><span>Word Counter</span></div>
+  <h1 class="page-title">Word Counter</h1>
+  <p class="page-desc">Paste or type your text and get a live count of words, characters, sentences, paragraphs and reading time.</p>
+</div>
+<div class="tool-workspace">
+  <div class="stat-grid">
+    <div class="stat-box"><div class="stat-num" id="words">0</div><div class="stat-label">Words</div></div>
+    <div class="stat-box"><div class="stat-num" id="chars">0</div><div class="stat-label">Characters</div></div>
+    <div class="stat-box"><div class="stat-num" id="charsNoSpace">0</div><div class="stat-label">Chars (no spaces)</div></div>
+    <div class="stat-box"><div class="stat-num" id="sentences">0</div><div class="stat-label">Sentences</div></div>
+    <div class="stat-box"><div class="stat-num" id="paragraphs">0</div><div class="stat-label">Paragraphs</div></div>
+    <div class="stat-box"><div class="stat-num" id="readTime">0</div><div class="stat-label">Min Read</div></div>
+  </div>
+  <textarea class="textarea-tool" id="inputText" placeholder="Start typing or paste your text here..." style="min-height:280px" oninput="count()"></textarea>
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="document.getElementById('inputText').value='';count()">Clear</button>
+    <button class="btn-secondary" onclick="copyText()">📋 Copy Text</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function count(){
+  const text = document.getElementById('inputText').value;
+  const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).filter(w => w.length > 0).length;
+  const chars = text.length;
+  const charsNoSpace = text.replace(/\s/g,'').length;
+  const sentences = text.trim() === '' ? 0 : (text.match(/[.!?]+/g)||[]).length;
+  const paragraphs = text.trim() === '' ? 0 : text.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
+  const readTime = Math.max(1, Math.ceil(words / 200));
+  document.getElementById('words').textContent = words.toLocaleString();
+  document.getElementById('chars').textContent = chars.toLocaleString();
+  document.getElementById('charsNoSpace').textContent = charsNoSpace.toLocaleString();
+  document.getElementById('sentences').textContent = sentences.toLocaleString();
+  document.getElementById('paragraphs').textContent = paragraphs.toLocaleString();
+  document.getElementById('readTime').textContent = readTime;
+}
+
+async function copyText(){
+  const text = document.getElementById('inputText').value;
+  if(!text){ document.getElementById('status').textContent='Nothing to copy.'; return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    document.getElementById('status').textContent = 'Copied to clipboard!';
+    document.getElementById('status').className = 'status-msg success';
+  } catch(e) {
+    document.getElementById('status').textContent = 'Copy failed — please select and copy manually.';
+    document.getElementById('status').className = 'status-msg error';
+  }
+  setTimeout(() => { document.getElementById('status').textContent = ''; }, 2000);
+}
+</script>
+</body></html>

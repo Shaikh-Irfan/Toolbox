@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedIn Headline Generator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.headline-card{padding:1.1rem 1.25rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px;margin-bottom:0.6rem;cursor:pointer;transition:border-color 0.2s,background 0.2s;position:relative}
+.headline-card:hover{border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.03)}
+.headline-text{font-size:0.9rem;color:var(--text);line-height:1.4;margin-bottom:0.35rem}
+.headline-meta{font-size:0.68rem;color:var(--muted);display:flex;gap:0.75rem}
+.headline-len{color:var(--muted)}
+.copy-hint{position:absolute;right:1rem;top:50%;transform:translateY(-50%);font-size:0.7rem;color:var(--muted);opacity:0;transition:opacity 0.2s}
+.headline-card:hover .copy-hint{opacity:1}
+.char-bar{height:3px;background:rgba(255,255,255,0.08);border-radius:2px;margin-top:0.3rem;overflow:hidden}
+.char-fill{height:100%;background:#6bffb8;border-radius:2px;transition:width 0.3s}
+.li-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+@media(max-width:640px){.li-form-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../resume.html">← Resume & Career</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../resume.html">Resume & Career</a><span>/</span><span>LinkedIn Headline Generator</span></div>
+  <h1 class="page-title">LinkedIn Headline Generator</h1>
+  <p class="page-desc">Fill in your details and get 8 professional LinkedIn headlines. Click any to copy. LinkedIn limit is 220 characters.</p>
+</div>
+<div class="tool-workspace">
+  <div class="li-form-grid">
+    <div class="option-group">
+      <div class="option-label">Current Job Title *</div>
+      <input type="text" class="option-input" id="title" placeholder="Software Engineer" style="width:100%" oninput="generate()">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Company / Industry</div>
+      <input type="text" class="option-input" id="company" placeholder="Fintech / Google" style="width:100%" oninput="generate()">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Top Skills (comma-separated)</div>
+      <input type="text" class="option-input" id="skills" placeholder="Python, React, Machine Learning" style="width:100%" oninput="generate()">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Years of Experience</div>
+      <input type="text" class="option-input" id="years" placeholder="5+" style="width:100%" oninput="generate()">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Specialisation / Niche</div>
+      <input type="text" class="option-input" id="niche" placeholder="Backend Systems / EdTech / B2B Sales" style="width:100%" oninput="generate()">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Career Goal (optional)</div>
+      <input type="text" class="option-input" id="goal" placeholder="Open to opportunities / Helping startups scale" style="width:100%" oninput="generate()">
+    </div>
+  </div>
+
+  <div id="headlineArea" style="display:none;margin-top:0.5rem">
+    <div class="option-label" style="margin-bottom:0.75rem">Generated headlines — click to copy</div>
+    <div id="headlineList"></div>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function generate(){
+  const title = document.getElementById('title').value.trim();
+  const company = document.getElementById('company').value.trim();
+  const skills = document.getElementById('skills').value.trim();
+  const years = document.getElementById('years').value.trim();
+  const niche = document.getElementById('niche').value.trim();
+  const goal = document.getElementById('goal').value.trim();
+
+  if(!title){ document.getElementById('headlineArea').style.display='none'; return; }
+
+  const skillList = skills ? skills.split(',').map(s=>s.trim()).filter(s=>s).slice(0,3) : [];
+  const skillStr = skillList.join(' | ');
+  const exp = years ? years+' years' : '';
+
+  const templates = [
+    title + (company ? ' @ '+company : '') + (niche ? ' | '+niche : '') + (goal ? ' | '+goal : ''),
+    (exp ? exp+' ' : '') + title + (niche ? ' specialising in '+niche : '') + (skillStr ? ' | '+skillStr : ''),
+    title + (skillList.length ? ' | '+skillList[0]+(skillList[1]?' & '+skillList[1]:'') : '') + (company ? ' | '+company : '') + (goal ? ' | '+goal : ''),
+    (niche || title) + ' professional' + (exp?' with '+exp:'') + ' of experience' + (skillStr?' | '+skillStr:'') + (goal?' | '+goal:''),
+    '🚀 ' + title + (company?' at '+company:'') + (niche?' · '+niche:'') + (goal?' · '+goal:''),
+    (goal ? goal+' | ' : '') + title + (years?' ('+years+'+ yrs)':'') + (skillStr?' | '+skillStr:''),
+    title + (niche?' in '+niche:'') + ' | Passionate about building ' + (company?'at '+company+' ':' ') + '| '+( skillList[0]||'innovation'),
+    (exp?exp+' ':'')+'experienced '+title+(niche?' in '+niche:'')+(goal?' | '+goal:'')+(skillStr?' | '+skillStr:'')
+  ].map(h => h.replace(/\s{2,}/g,' ').replace(/\|\s*\|/g,'|').replace(/^[\s|]+|[\s|]+$/g,'').trim());
+
+  const listHTML = templates.map((h,i) => {
+    const len = h.length;
+    const pct = Math.min(100,(len/220)*100);
+    const color = len>220?'#ff7878':len>180?'#ffc850':'#6bffb8';
+    return `<div class="headline-card" onclick="copyHeadline(this,'${h.replace(/'/g,"\\'")}')">
+      <div class="headline-text">${h}</div>
+      <div class="headline-meta">
+        <span class="headline-len" style="color:${color}">${len}/220 chars</span>
+        ${len>220?'<span style="color:#ff7878">⚠ Too long — edit before using</span>':''}
+      </div>
+      <div class="char-bar"><div class="char-fill" style="width:${pct}%;background:${color}"></div></div>
+      <span class="copy-hint">Click to copy</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('headlineList').innerHTML = listHTML;
+  document.getElementById('headlineArea').style.display='block';
+}
+
+async function copyHeadline(el, text){
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus('Headline copied to clipboard!','success');
+    el.style.borderColor='rgba(107,255,184,0.4)';
+    setTimeout(()=>{ el.style.borderColor=''; setStatus(''); },2000);
+  } catch(e){
+    setStatus('Copy failed — please select and copy manually.','error');
+  }
+}
+
+function setStatus(msg,type){ const s=document.getElementById('status'); s.textContent=msg; s.className='status-msg'+(type?' '+type:''); }
+generate();
+</script>
+</body></html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance Calculator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.att-result{font-family:var(--serif);font-size:3rem;margin:1.5rem 0 0.25rem}
+.att-ok{color:#6bffb8}.att-warn{color:#ffc850}.att-danger{color:#ff7878}
+.info-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.75rem;margin-top:1.5rem}
+.info-card{padding:1.1rem;background:var(--card-bg);border:0.5px solid var(--card-border);border-radius:4px}
+.info-label{font-size:0.62rem;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted);margin-bottom:0.3rem}
+.info-val{font-family:var(--serif);font-size:1.3rem;color:var(--text)}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../exam-tools.html">← Exam Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../exam-tools.html">Exam Tools</a><span>/</span><span>Attendance Calculator</span></div>
+  <h1 class="page-title">Attendance Calculator</h1>
+  <p class="page-desc">Check your current attendance, how many classes you can skip, and how many you need to attend to reach the required percentage.</p>
+</div>
+<div class="tool-workspace" style="max-width:500px">
+  <div style="display:flex;flex-direction:column;gap:1.25rem;margin-bottom:1.5rem">
+    <div class="option-group">
+      <div class="option-label">Total Classes Held</div>
+      <input type="number" class="option-input" id="total" value="120" min="1" oninput="calc()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Classes Attended</div>
+      <input type="number" class="option-input" id="attended" value="90" min="0" oninput="calc()" style="width:100%">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Required Attendance % — <span id="reqLabel">75%</span></div>
+      <div class="range-row" style="margin:0"><input type="range" class="range-input" id="required" min="50" max="100" value="75" oninput="document.getElementById('reqLabel').textContent=this.value+'%';calc()"></div>
+    </div>
+  </div>
+  <div class="option-label">Current Attendance</div>
+  <div class="att-result" id="attResult">—</div>
+  <div style="font-size:0.85rem;color:var(--muted)" id="attStatus"></div>
+  <div class="info-cards" id="infoCards"></div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function calc(){
+  const total = parseInt(document.getElementById('total').value)||0;
+  const attended = parseInt(document.getElementById('attended').value)||0;
+  const required = parseInt(document.getElementById('required').value)||75;
+
+  if(total <= 0){ document.getElementById('attResult').textContent='—'; return; }
+  const safeAttended = Math.min(attended, total);
+  const pct = (safeAttended/total)*100;
+  const resultEl = document.getElementById('attResult');
+  resultEl.textContent = pct.toFixed(1)+'%';
+  resultEl.className = 'att-result ' + (pct>=required?'att-ok':pct>=(required-5)?'att-warn':'att-danger');
+
+  // How many can skip and still be at required%?
+  // (attended) / (total + x) = required/100  → solve for x (classes can attend future)
+  // Classes can bunk: (attended - required/100 * total) / (required/100)
+  const canSkip = Math.floor((safeAttended - (required/100)*total) / (required/100));
+  // Classes need to attend: (required/100 * total - attended) / (1 - required/100)
+  const needAttend = Math.ceil(((required/100)*total - safeAttended) / (1 - required/100));
+
+  let statusMsg = '';
+  if(pct >= required){
+    statusMsg = canSkip > 0 ? `You can skip ${canSkip} more class${canSkip!==1?'es':''} and still be safe.` : 'You are exactly at the limit. Don\'t skip any more classes.';
+  } else {
+    statusMsg = `You are below the required ${required}%. You need to attend ${needAttend} more class${needAttend!==1?'es':''} in a row.`;
+  }
+  document.getElementById('attStatus').textContent = statusMsg;
+
+  document.getElementById('infoCards').innerHTML = `
+    <div class="info-card"><div class="info-label">Attended</div><div class="info-val">${safeAttended} / ${total}</div></div>
+    <div class="info-card"><div class="info-label">Absent</div><div class="info-val">${total-safeAttended}</div></div>
+    <div class="info-card"><div class="info-label">Can Skip</div><div class="info-val ${canSkip>0?'':'att-danger'}">${Math.max(0,canSkip)}</div></div>
+    <div class="info-card"><div class="info-label">Need to Attend</div><div class="info-val ${pct>=required?'att-ok':'att-warn'}">${pct>=required?0:needAttend}</div></div>`;
+}
+calc();
+</script>
+</body></html>

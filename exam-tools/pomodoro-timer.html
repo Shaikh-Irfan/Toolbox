@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro Timer — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+<style>
+.timer-display{font-family:var(--serif);font-size:5rem;color:var(--text);letter-spacing:0.05em;margin:2rem 0 1rem;line-height:1}
+.timer-label{font-size:0.72rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem}
+.phase-indicator{display:flex;gap:0.4rem;margin-bottom:2rem;flex-wrap:wrap}
+.phase-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.1);transition:background 0.3s}
+.phase-dot.done{background:#6bffb8}
+.phase-dot.current{background:var(--text)}
+.timer-controls{display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:2rem}
+.timer-btn{padding:0.75rem 1.75rem;font-family:var(--sans);font-size:0.82rem;letter-spacing:0.08em;text-transform:uppercase;border:none;border-radius:3px;cursor:pointer;transition:opacity 0.2s}
+.timer-start{background:var(--text);color:var(--bg)}
+.timer-start:hover{opacity:0.88}
+.timer-pause{background:rgba(255,255,255,0.1);color:var(--text);border:0.5px solid rgba(255,255,255,0.2)}
+.timer-pause:hover{background:rgba(255,255,255,0.15)}
+.timer-reset{background:transparent;color:var(--muted);border:0.5px solid var(--card-border)}
+.timer-reset:hover{color:var(--text);border-color:rgba(255,255,255,0.2)}
+.progress-ring-wrap{position:relative;display:inline-block;margin-bottom:1rem}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0.75rem;margin-top:1.5rem;padding-top:1.5rem;border-top:0.5px solid var(--line)}
+.session-log{margin-top:1.5rem;display:flex;flex-direction:column;gap:0.3rem;max-height:180px;overflow-y:auto}
+.log-item{font-size:0.75rem;color:var(--muted);padding:0.35rem 0;border-bottom:0.5px solid rgba(255,255,255,0.04)}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../exam-tools.html">← Exam Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../exam-tools.html">Exam Tools</a><span>/</span><span>Pomodoro Timer</span></div>
+  <h1 class="page-title">Pomodoro Timer</h1>
+  <p class="page-desc">Stay focused with the Pomodoro technique — 25 minutes of focused study, then a 5-minute break. Customisable intervals.</p>
+</div>
+<div class="tool-workspace" style="max-width:520px">
+  <div class="timer-label" id="phaseLabel">FOCUS TIME</div>
+  <div class="timer-display" id="timerDisplay">25:00</div>
+
+  <!-- Progress dots -->
+  <div class="phase-indicator" id="phaseIndicator"></div>
+
+  <div class="timer-controls">
+    <button class="timer-btn timer-start" id="startBtn" onclick="startTimer()">▶ Start</button>
+    <button class="timer-btn timer-pause" id="pauseBtn" onclick="pauseTimer()" style="display:none">⏸ Pause</button>
+    <button class="timer-btn timer-reset" onclick="resetTimer()">↺ Reset</button>
+    <button class="timer-btn timer-reset" onclick="skipPhase()">⏭ Skip</button>
+  </div>
+
+  <div style="font-size:0.78rem;color:var(--muted)">
+    Sessions completed today: <span id="sessionCount" style="color:var(--text);font-family:var(--serif)">0</span>
+    &nbsp;·&nbsp; Total focus time: <span id="totalFocus" style="color:var(--text)">0 min</span>
+  </div>
+
+  <!-- Settings -->
+  <div class="settings-grid">
+    <div class="option-group">
+      <div class="option-label">Focus (min)</div>
+      <input type="number" class="option-input" id="focusMin" value="25" min="1" max="90" onchange="resetTimer()">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Short Break (min)</div>
+      <input type="number" class="option-input" id="shortMin" value="5" min="1" max="30" onchange="resetTimer()">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Long Break (min)</div>
+      <input type="number" class="option-input" id="longMin" value="15" min="5" max="60" onchange="resetTimer()">
+    </div>
+    <div class="option-group">
+      <div class="option-label">Sessions before long break</div>
+      <input type="number" class="option-input" id="sessionsBeforeLong" value="4" min="2" max="8" onchange="resetTimer()">
+    </div>
+  </div>
+
+  <!-- Session log -->
+  <div style="margin-top:1.5rem">
+    <div class="option-label" style="margin-bottom:0.5rem">Session Log</div>
+    <div class="session-log" id="sessionLog"><div class="log-item" style="color:rgba(255,255,255,0.2)">No sessions yet — start your first Pomodoro!</div></div>
+  </div>
+
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+let timerInterval = null;
+let currentSeconds = 0;
+let isRunning = false;
+let currentPhase = 'focus'; // focus | short | long
+let completedSessions = 0;
+let totalFocusMinutes = 0;
+let sessionLog = [];
+let phaseSecondsTotal = 0;
+
+function getFocusMin(){ return parseInt(document.getElementById('focusMin').value)||25; }
+function getShortMin(){ return parseInt(document.getElementById('shortMin').value)||5; }
+function getLongMin(){ return parseInt(document.getElementById('longMin').value)||15; }
+function getSessionsBeforeLong(){ return parseInt(document.getElementById('sessionsBeforeLong').value)||4; }
+
+function formatTime(s){ return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+
+function updateDisplay(){
+  document.getElementById('timerDisplay').textContent = formatTime(currentSeconds);
+  const labels = {focus:'FOCUS TIME',short:'SHORT BREAK',long:'LONG BREAK'};
+  document.getElementById('phaseLabel').textContent = labels[currentPhase];
+  // Update title
+  document.title = formatTime(currentSeconds)+' — '+labels[currentPhase]+' | Toolbox';
+}
+
+function renderDots(){
+  const total = getSessionsBeforeLong();
+  let html = '';
+  for(let i=0;i<total;i++){
+    const done = i < (completedSessions % total);
+    const cur = !done && i === (completedSessions % total) && currentPhase==='focus';
+    html += `<div class="phase-dot${done?' done':cur?' current':''}"></div>`;
+  }
+  document.getElementById('phaseIndicator').innerHTML = html;
+}
+
+function startTimer(){
+  if(isRunning) return;
+  if(currentSeconds===0){
+    currentSeconds = getFocusMin()*60;
+    phaseSecondsTotal = currentSeconds;
+  }
+  isRunning = true;
+  document.getElementById('startBtn').style.display='none';
+  document.getElementById('pauseBtn').style.display='inline-flex';
+  timerInterval = setInterval(tick, 1000);
+}
+
+function tick(){
+  if(currentSeconds<=0){ phaseComplete(); return; }
+  currentSeconds--;
+  updateDisplay();
+}
+
+function phaseComplete(){
+  clearInterval(timerInterval); isRunning=false;
+  document.getElementById('startBtn').style.display='inline-flex';
+  document.getElementById('pauseBtn').style.display='none';
+
+  // Beep
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = currentPhase==='focus'?660:440;
+    gain.gain.setValueAtTime(0.3,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.8);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.8);
+  } catch(e){}
+
+  if(currentPhase==='focus'){
+    completedSessions++;
+    totalFocusMinutes += getFocusMin();
+    const logMsg = `${new Date().toLocaleTimeString()} — Focus session #${completedSessions} complete (${getFocusMin()} min)`;
+    sessionLog.unshift(logMsg);
+    updateSessionStats();
+    // Determine next break
+    if(completedSessions % getSessionsBeforeLong()===0){ currentPhase='long'; currentSeconds=getLongMin()*60; }
+    else { currentPhase='short'; currentSeconds=getShortMin()*60; }
+  } else {
+    const isLong = currentPhase==='long';
+    sessionLog.unshift(`${new Date().toLocaleTimeString()} — ${isLong?'Long':'Short'} break complete`);
+    updateSessionStats();
+    currentPhase='focus'; currentSeconds=getFocusMin()*60;
+  }
+  phaseSecondsTotal=currentSeconds;
+  updateDisplay(); renderDots();
+}
+
+function pauseTimer(){
+  clearInterval(timerInterval); isRunning=false;
+  document.getElementById('startBtn').style.display='inline-flex';
+  document.getElementById('pauseBtn').style.display='none';
+}
+
+function resetTimer(){
+  clearInterval(timerInterval); isRunning=false;
+  currentPhase='focus'; currentSeconds=0;
+  document.getElementById('startBtn').style.display='inline-flex';
+  document.getElementById('pauseBtn').style.display='none';
+  document.getElementById('timerDisplay').textContent=formatTime(getFocusMin()*60);
+  document.getElementById('phaseLabel').textContent='FOCUS TIME';
+  document.title='Pomodoro Timer — Toolbox';
+  renderDots();
+}
+
+function skipPhase(){ phaseComplete(); }
+
+function updateSessionStats(){
+  document.getElementById('sessionCount').textContent=completedSessions;
+  document.getElementById('totalFocus').textContent=totalFocusMinutes+' min';
+  const logEl=document.getElementById('sessionLog');
+  logEl.innerHTML=sessionLog.slice(0,20).map(l=>`<div class="log-item">${l}</div>`).join('');
+}
+
+// Init
+document.getElementById('timerDisplay').textContent=formatTime(getFocusMin()*60);
+renderDots();
+</script>
+</body></html>

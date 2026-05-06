@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Favicon Generator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../image-tools.html">← Image & Design</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../image-tools.html">Image & Design</a><span>/</span><span>Favicon Generator</span></div>
+  <h1 class="page-title">Favicon Generator</h1>
+  <p class="page-desc">Upload any image and generate favicons in all standard sizes. Download as individual PNGs or a ZIP package.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept="image/*">
+    <div class="drop-icon">⭐</div>
+    <div class="drop-title">Drop your image here</div>
+    <div class="drop-sub">PNG, JPG, SVG recommended — use a square image for best results</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">🖼️</div>
+    <div class="file-info-text"><div class="file-info-name" id="fname"></div><div class="file-info-size" id="fsize"></div></div>
+    <button class="file-remove" onclick="reset()">✕</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div id="resultArea" style="display:none">
+    <div class="option-label" style="margin-bottom:1rem">Generated favicons</div>
+    <div id="previewGrid" style="display:flex;gap:1.25rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.5rem"></div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="downloadAll()">⬇ Download All (ZIP)</button>
+      <button class="btn-secondary" onclick="reset()">Start over</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const SIZES = [16, 32, 48, 64, 128, 180, 192, 512];
+let generatedBlobs = [];
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 15000);
+}
+
+function loadImg(file) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.onerror = rej; img.src = url;
+  });
+}
+
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(2)+' MB';}
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+async function handleFile(f) {
+  if(!f||!f.type.startsWith('image/')){setStatus('Please upload an image','error');return;}
+  document.getElementById('fname').textContent=f.name;
+  document.getElementById('fsize').textContent=formatSize(f.size);
+  document.getElementById('fileInfo').style.display='flex';
+  dz.style.display='none';
+  setStatus('Generating favicons...');
+  generatedBlobs=[];
+  const img=await loadImg(f);
+  const grid=document.getElementById('previewGrid');
+  grid.innerHTML='';
+  const promises=SIZES.map(size=>new Promise(res=>{
+    const canvas=document.createElement('canvas');
+    canvas.width=size;canvas.height=size;
+    const ctx=canvas.getContext('2d');
+    ctx.drawImage(img,0,0,size,size);
+    canvas.toBlob(blob=>{
+      generatedBlobs.push({size,blob,name:`favicon-${size}x${size}.png`});
+      // Preview
+      const wrap=document.createElement('div');
+      wrap.style.cssText='text-align:center;cursor:pointer';
+      const previewUrl=URL.createObjectURL(blob);
+      wrap.innerHTML=`<img src="${previewUrl}" width="${Math.max(size,16)}" height="${Math.max(size,16)}" style="image-rendering:pixelated;border:0.5px solid rgba(255,255,255,0.1);border-radius:2px;background:rgba(255,255,255,0.05)"><div class="option-label" style="margin-top:0.4rem">${size}×${size}</div>`;
+      wrap.title=`Download ${size}x${size}`;
+      wrap.onclick=()=>downloadBlob(blob,`favicon-${size}x${size}.png`);
+      grid.appendChild(wrap);
+      res();
+    },'image/png');
+  }));
+  await Promise.all(promises);
+  document.getElementById('resultArea').style.display='block';
+  setStatus('Click any favicon to download individually, or download all as ZIP.','success');
+}
+
+async function downloadAll(){
+  if(!generatedBlobs.length)return;
+  setStatus('Creating ZIP...');
+  const zip=new JSZip();
+  generatedBlobs.forEach(({blob,name})=>zip.file(name,blob));
+  // Also add a simple HTML snippet
+  zip.file('how-to-use.html',`<!-- Add these lines inside your <head> tag -->\n<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">\n<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">\n<link rel="apple-touch-icon" sizes="180x180" href="/favicon-180x180.png">\n<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png">`);
+  const zipBlob=await zip.generateAsync({type:'blob'});
+  downloadBlob(zipBlob,'favicons.zip');
+  setStatus('ZIP downloaded!','success');
+}
+
+function reset(){
+  generatedBlobs=[];
+  document.getElementById('fileInput').value='';
+  document.getElementById('fileInfo').style.display='none';
+  document.getElementById('resultArea').style.display='none';
+  document.getElementById('previewGrid').innerHTML='';
+  dz.style.display='block';
+  setStatus('');
+}
+</script>
+</body></html>

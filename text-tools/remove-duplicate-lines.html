@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Remove Duplicate Lines — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../text-tools.html">← Text Tools</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../text-tools.html">Text Tools</a><span>/</span><span>Remove Duplicate Lines</span></div>
+  <h1 class="page-title">Remove Duplicate Lines</h1>
+  <p class="page-desc">Paste any list, remove all duplicate lines and keep only unique entries. Options to sort, trim and ignore case.</p>
+</div>
+<div class="tool-workspace">
+  <div class="options-row" style="flex-wrap:wrap;margin-bottom:1rem">
+    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--muted);cursor:pointer">
+      <input type="checkbox" id="ignoreCase"> Ignore case
+    </label>
+    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--muted);cursor:pointer">
+      <input type="checkbox" id="trimLines" checked> Trim whitespace
+    </label>
+    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--muted);cursor:pointer">
+      <input type="checkbox" id="removeEmpty" checked> Remove empty lines
+    </label>
+    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--muted);cursor:pointer">
+      <input type="checkbox" id="sortLines"> Sort A → Z
+    </label>
+  </div>
+  <div class="option-group" style="width:100%;margin-bottom:1rem">
+    <div class="option-label">Input — paste your list</div>
+    <textarea class="textarea-tool" id="inputText" placeholder="apple&#10;banana&#10;apple&#10;cherry&#10;banana&#10;date" style="min-height:220px"></textarea>
+  </div>
+  <div class="btn-row" style="margin-top:0;margin-bottom:1.5rem">
+    <button class="btn-primary" onclick="process()">Remove Duplicates</button>
+    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+  </div>
+  <div class="status-msg" id="status" style="margin-bottom:0.75rem"></div>
+  <div id="resultArea" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem">
+      <div class="option-label" id="resultLabel">Result</div>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.7rem;font-family:var(--sans)" onclick="copyOutput()">📋 Copy</button>
+    </div>
+    <textarea class="textarea-tool" id="outputText" style="min-height:220px" readonly></textarea>
+  </div>
+  <div class="ad-strip" style="margin-top:2rem">Advertisement</div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+function process(){
+  const raw = document.getElementById('inputText').value;
+  if(!raw.trim()){ setStatus('Please paste some text first.','error'); return; }
+
+  const ignoreCase = document.getElementById('ignoreCase').checked;
+  const trimLines  = document.getElementById('trimLines').checked;
+  const removeEmpty= document.getElementById('removeEmpty').checked;
+  const sortLines  = document.getElementById('sortLines').checked;
+
+  let lines = raw.split('\n');
+  if(trimLines) lines = lines.map(l => l.trim());
+  if(removeEmpty) lines = lines.filter(l => l.length > 0);
+
+  const seen = new Set();
+  const unique = [];
+  let dupCount = 0;
+  lines.forEach(line => {
+    const key = ignoreCase ? line.toLowerCase() : line;
+    if(!seen.has(key)){ seen.add(key); unique.push(line); }
+    else dupCount++;
+  });
+
+  if(sortLines) unique.sort((a,b) => a.localeCompare(b, undefined, {sensitivity: ignoreCase?'base':'variant'}));
+
+  document.getElementById('outputText').value = unique.join('\n');
+  document.getElementById('resultLabel').textContent = `${unique.length} unique line${unique.length!==1?'s':''}`;
+  document.getElementById('resultArea').style.display = 'block';
+  setStatus(`Done — removed ${dupCount} duplicate${dupCount!==1?'s':''}. ${unique.length} unique line${unique.length!==1?'s':''} remaining.`, 'success');
+}
+
+function clearAll(){
+  document.getElementById('inputText').value = '';
+  document.getElementById('outputText').value = '';
+  document.getElementById('resultArea').style.display = 'none';
+  setStatus('');
+}
+
+async function copyOutput(){
+  const text = document.getElementById('outputText').value;
+  if(!text){ setStatus('Nothing to copy.','error'); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus('Copied to clipboard!','success');
+  } catch(e){
+    document.getElementById('outputText').select();
+    setStatus('Text selected — press Ctrl+C to copy.','');
+  }
+  setTimeout(()=>setStatus(''), 2000);
+}
+
+function setStatus(msg,type){
+  const s=document.getElementById('status');
+  s.textContent=msg; s.className='status-msg'+(type?' '+type:'');
+}
+</script>
+</body></html>

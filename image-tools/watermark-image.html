@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watermark Image — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../image-tools.html">← Image & Design</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../image-tools.html">Image & Design</a><span>/</span><span>Watermark Image</span></div>
+  <h1 class="page-title">Watermark Image</h1>
+  <p class="page-desc">Add a text watermark to your photos. Control position, font size, opacity and color.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept="image/*">
+    <div class="drop-icon">💧</div>
+    <div class="drop-title">Drop your image here</div>
+    <div class="drop-sub">JPG, PNG, WEBP supported</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">🖼️</div>
+    <div class="file-info-text"><div class="file-info-name" id="fname"></div><div class="file-info-size" id="fsize"></div></div>
+    <button class="file-remove" onclick="reset()">✕</button>
+  </div>
+  <div id="controls" style="display:none">
+    <div class="options-row" style="flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
+      <div class="option-group" style="flex:2;min-width:180px">
+        <div class="option-label">Watermark text</div>
+        <input type="text" class="option-input" id="wmText" value="© My Name" style="width:100%" oninput="renderPreview()">
+      </div>
+      <div class="option-group">
+        <div class="option-label">Position</div>
+        <select class="option-select" id="wmPos" onchange="renderPreview()">
+          <option value="bottom-right">Bottom Right</option>
+          <option value="bottom-left">Bottom Left</option>
+          <option value="top-right">Top Right</option>
+          <option value="top-left">Top Left</option>
+          <option value="center">Center</option>
+          <option value="tile">Tile (repeat)</option>
+        </select>
+      </div>
+    </div>
+    <div class="options-row" style="flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
+      <div class="option-group">
+        <div class="option-label">Font size (% of width)</div>
+        <div class="range-row" style="margin:0">
+          <input type="range" class="range-input" id="wmSize" min="1" max="15" value="4" oninput="document.getElementById('wmSizeVal').textContent=this.value+'%';renderPreview()">
+          <span class="range-val" id="wmSizeVal">4%</span>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option-label">Opacity</div>
+        <div class="range-row" style="margin:0">
+          <input type="range" class="range-input" id="wmOpacity" min="5" max="100" value="40" oninput="document.getElementById('wmOpVal').textContent=this.value+'%';renderPreview()">
+          <span class="range-val" id="wmOpVal">40%</span>
+        </div>
+      </div>
+      <div class="option-group">
+        <div class="option-label">Color</div>
+        <input type="color" id="wmColor" value="#ffffff" onchange="renderPreview()" style="background:var(--card-bg);border:0.5px solid var(--card-border);width:50px;height:36px;border-radius:3px;cursor:pointer;padding:2px">
+      </div>
+    </div>
+    <div class="option-label" style="margin-bottom:0.5rem">Live preview</div>
+    <canvas id="previewCanvas" style="max-width:100%;max-height:300px;border-radius:4px;display:block;margin-bottom:1rem;border:0.5px solid rgba(255,255,255,0.1)"></canvas>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="download()">⬇ Download Watermarked Image</button>
+      <button class="btn-secondary" onclick="reset()">Choose another</button>
+    </div>
+  </div>
+  <div class="status-msg" id="status"></div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script>
+let origImg=null, origFile=null;
+
+function downloadBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),15000);}
+function loadImg(file){return new Promise((res,rej)=>{const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(url);res(img);};img.onerror=rej;img.src=url;});}
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(2)+' MB';}
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+async function handleFile(f){
+  if(!f||!f.type.startsWith('image/')){setStatus('Please upload an image','error');return;}
+  origFile=f;origImg=await loadImg(f);
+  document.getElementById('fname').textContent=f.name;
+  document.getElementById('fsize').textContent=formatSize(f.size);
+  document.getElementById('fileInfo').style.display='flex';
+  dz.style.display='none';
+  document.getElementById('controls').style.display='block';
+  renderPreview();
+}
+
+function applyWatermark(canvas){
+  const W=origImg.naturalWidth,H=origImg.naturalHeight;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(origImg,0,0);
+  const text=document.getElementById('wmText').value||'Watermark';
+  const fontSize=Math.round(W*(parseInt(document.getElementById('wmSize').value)/100));
+  const opacity=parseInt(document.getElementById('wmOpacity').value)/100;
+  const color=document.getElementById('wmColor').value;
+  const pos=document.getElementById('wmPos').value;
+  ctx.save();
+  ctx.globalAlpha=opacity;
+  ctx.font=`bold ${fontSize}px Arial, sans-serif`;
+  ctx.fillStyle=color;
+  ctx.shadowColor='rgba(0,0,0,0.5)';ctx.shadowBlur=Math.round(fontSize*0.2);
+  const pad=Math.round(fontSize*0.6);
+  const tw=ctx.measureText(text).width;
+  if(pos==='tile'){
+    ctx.rotate(-20*Math.PI/180);
+    const step=tw*1.5;
+    for(let y=-H;y<H*2;y+=fontSize*2.5){
+      for(let x=-W;x<W*2;x+=step){ctx.fillText(text,x,y);}
+    }
+  }else{
+    let x,y;
+    if(pos==='bottom-right'){x=W-tw-pad;y=H-pad;}
+    else if(pos==='bottom-left'){x=pad;y=H-pad;}
+    else if(pos==='top-right'){x=W-tw-pad;y=fontSize+pad;}
+    else if(pos==='top-left'){x=pad;y=fontSize+pad;}
+    else{ctx.textAlign='center';x=W/2;y=H/2;}
+    ctx.fillText(text,x,y);
+  }
+  ctx.restore();
+}
+
+function renderPreview(){
+  if(!origImg)return;
+  const canvas=document.getElementById('previewCanvas');
+  applyWatermark(canvas);
+  // Scale display size
+  const maxW=560;
+  if(canvas.width>maxW){canvas.style.width=maxW+'px';canvas.style.height=Math.round(canvas.height*(maxW/canvas.width))+'px';}
+  else{canvas.style.width=canvas.width+'px';canvas.style.height=canvas.height+'px';}
+}
+
+function download(){
+  if(!origImg)return;
+  const canvas=document.createElement('canvas');
+  applyWatermark(canvas);
+  const fmt=origFile.type==='image/png'?'image/png':'image/jpeg';
+  canvas.toBlob(blob=>{
+    const ext=fmt==='image/png'?'png':'jpg';
+    const name=(origFile.name.replace(/\.[^.]+$/,'')||'image')+'-watermarked.'+ext;
+    downloadBlob(blob,name);
+    setStatus('Downloaded!','success');
+  },fmt,0.92);
+}
+
+function reset(){
+  origImg=null;origFile=null;
+  document.getElementById('fileInput').value='';
+  document.getElementById('fileInfo').style.display='none';
+  document.getElementById('controls').style.display='none';
+  dz.style.display='block';
+  setStatus('');
+}
+</script>
+</body></html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PowerPoint to PDF — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../file-converter.html">← File Converter</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../file-converter.html">File Converter</a><span>/</span><span>PowerPoint to PDF</span></div>
+  <h1 class="page-title">PowerPoint to PDF</h1>
+  <p class="page-desc">Upload your .pptx file and convert each slide to a PDF page using browser rendering.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept=".pptx">
+    <div class="drop-icon">🎞️</div>
+    <div class="drop-title">Drop your PPTX here</div>
+    <div class="drop-sub">.pptx files only</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">🎞️</div>
+    <div class="file-info-text"><div class="file-info-name" id="fname"></div><div class="file-info-size" id="fsize"></div></div>
+    <button class="file-remove" onclick="resetFile()">✕</button>
+  </div>
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="btn-row">
+    <button class="btn-primary" id="convertBtn" onclick="convert()" disabled>Convert to PDF</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div class="result-box" id="result">
+    <div class="result-label">Ready</div>
+    <div class="result-stat" id="resultStat"></div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-primary" id="dlBtn">⬇ Download PDF</button>
+      <button class="btn-secondary" onclick="resetFile()">Convert another</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script>
+let currentFile=null;
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+function handleFile(f){
+  if(!f||!f.name.match(/\.pptx$/i)){setStatus('Please upload a .pptx file','error');return;}
+  currentFile=f;
+  document.getElementById('fname').textContent=f.name;
+  document.getElementById('fsize').textContent=formatSize(f.size);
+  document.getElementById('fileInfo').style.display='flex';
+  dz.style.display='none';
+  document.getElementById('convertBtn').disabled=false;
+}
+
+function resetFile(){
+  currentFile=null;
+  document.getElementById('fileInput').value='';
+  document.getElementById('fileInfo').style.display='none';
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('prog').classList.remove('active');
+  dz.style.display='block';
+  document.getElementById('convertBtn').disabled=true;
+  setStatus('');
+}
+
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+async function convert(){
+  if(!currentFile)return;
+  document.getElementById('convertBtn').disabled=true;
+  const prog=document.getElementById('prog');const fill=document.getElementById('progFill');
+  prog.classList.add('active');fill.style.width='15%';
+  setStatus('Reading PPTX file...');
+  try{
+    const ab=await currentFile.arrayBuffer();
+    const zip=await JSZip.loadAsync(ab);
+    fill.style.width='35%';
+    setStatus('Extracting slide thumbnails...');
+    // Extract slide images if present (some pptx have them)
+    const pdfDoc=await PDFLib.PDFDocument.create();
+    {
+      // Always parse slide XML in correct order for reliable output
+      const slideFiles=Object.keys(zip.files)
+        .filter(k=>k.match(/ppt\/slides\/slide[0-9]+\.xml$/i))
+        .sort((a,b)=>{
+          const na=parseInt(a.match(/slide(\d+)/i)[1]);
+          const nb=parseInt(b.match(/slide(\d+)/i)[1]);
+          return na-nb;
+        });
+      for(let i=0;i<slideFiles.length;i++){
+        fill.style.width=(35+(i/slideFiles.length)*50)+'%';
+        const xml=await zip.files[slideFiles[i]].async('string');
+        // Extract text runs from <a:t> tags (actual text content tags in PPTX XML)
+        const textMatches = xml.match(/<a:t[^>]*>([^<]*)<\/a:t>/g) || [];
+        const texts = textMatches.map(m=>m.replace(/<[^>]+>/g,'').trim()).filter(Boolean);
+        // Group into title (first paragraph) and body
+        const titleText = texts.slice(0,1).join(' ') || `Slide ${i+1}`;
+        const bodyLines = texts.slice(1);
+        
+        const page = pdfDoc.addPage([720,540]);
+        const { rgb } = PDFLib;
+        // Slide background
+        page.drawRectangle({x:0,y:0,width:720,height:540,color:rgb(0.98,0.98,0.98)});
+        // Slide number badge
+        page.drawText(`${i+1}`,{x:690,y:10,size:9,color:rgb(0.6,0.6,0.6)});
+        // Title
+        if (titleText.length > 0) {
+          const titleStr = titleText.substring(0,80);
+          page.drawText(titleStr,{x:40,y:480,size:20,color:rgb(0.1,0.1,0.3),maxWidth:640});
+        }
+        // Divider line
+        page.drawLine({start:{x:40,y:465},end:{x:680,y:465},thickness:1,color:rgb(0.8,0.8,0.9)});
+        // Body text — wrap lines
+        let yPos = 445;
+        for (const line of bodyLines) {
+          if (yPos < 30) break;
+          const safeStr = line.substring(0,90).replace(/[\x00-\x1F]/g,' ');
+          if (safeStr.trim()) {
+            page.drawText('• '+safeStr,{x:50,y:yPos,size:11,color:rgb(0.2,0.2,0.2),maxWidth:620});
+            yPos -= 20;
+          }
+        }
+    }
+    fill.style.width='95%';
+    const bytes=await pdfDoc.save();
+    const blob=new Blob([bytes],{type:'application/pdf'});
+    const name=currentFile.name.replace(/\.pptx$/i,'.pdf');
+    document.getElementById('resultStat').textContent=name;
+    document.getElementById('resultSub').textContent=`${pdfDoc.getPageCount()} pages · ${formatSize(blob.size)}`;
+    document.getElementById('dlBtn').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);};
+    document.getElementById('result').classList.add('show');
+    fill.style.width='100%';
+    setTimeout(()=>prog.classList.remove('active'),400);
+    setStatus('Done!','success');
+  }catch(e){
+    setStatus('Failed: '+e.message,'error');
+    prog.classList.remove('active');
+  }
+  document.getElementById('convertBtn').disabled=false;
+}
+</script>
+</body></html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Code Generator — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../image-tools.html">← Image & Design</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../image-tools.html">Image & Design</a><span>/</span><span>QR Code Generator</span></div>
+  <h1 class="page-title">QR Code Generator</h1>
+  <p class="page-desc">Generate QR codes for URLs, text, email, phone numbers or any content. Download as PNG or SVG.</p>
+</div>
+<div class="tool-workspace">
+  <div class="options-row" style="flex-direction:column;gap:1rem">
+    <div class="option-group" style="width:100%">
+      <div class="option-label">Content</div>
+      <textarea class="textarea-tool" id="qrInput" placeholder="Enter URL, text, email, phone number..." style="min-height:80px" oninput="generate()"></textarea>
+    </div>
+    <div class="options-row" style="flex-wrap:wrap">
+      <div class="option-group">
+        <div class="option-label">Size (px)</div>
+        <select class="option-select" id="qrSize" onchange="generate()">
+          <option value="128">128 × 128</option>
+          <option value="256" selected>256 × 256</option>
+          <option value="512">512 × 512</option>
+          <option value="1024">1024 × 1024</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <div class="option-label">Error correction</div>
+        <select class="option-select" id="qrEcc" onchange="generate()">
+          <option value="L">L — Low (7%)</option>
+          <option value="M" selected>M — Medium (15%)</option>
+          <option value="Q">Q — Quartile (25%)</option>
+          <option value="H">H — High (30%)</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <div class="option-label">Foreground</div>
+        <input type="color" id="fgColor" value="#000000" onchange="generate()" style="background:var(--card-bg);border:0.5px solid var(--card-border);width:50px;height:36px;border-radius:3px;cursor:pointer;padding:2px">
+      </div>
+      <div class="option-group">
+        <div class="option-label">Background</div>
+        <input type="color" id="bgColor" value="#ffffff" onchange="generate()" style="background:var(--card-bg);border:0.5px solid var(--card-border);width:50px;height:36px;border-radius:3px;cursor:pointer;padding:2px">
+      </div>
+    </div>
+  </div>
+  <div class="status-msg" id="status" style="margin-top:0.75rem"></div>
+  <div id="resultArea" style="display:none;margin-top:1.5rem">
+    <canvas id="qrCanvas" style="display:block;border-radius:4px;margin-bottom:1rem;image-rendering:pixelated"></canvas>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="downloadPNG()">⬇ Download PNG</button>
+      <button class="btn-secondary" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+let generateTimeout = null;
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 15000);
+}
+
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+function generate() {
+  clearTimeout(generateTimeout);
+  generateTimeout = setTimeout(doGenerate, 300);
+}
+
+function doGenerate() {
+  const text = document.getElementById('qrInput').value.trim();
+  if (!text) {
+    document.getElementById('resultArea').style.display = 'none';
+    setStatus('');
+    return;
+  }
+  const size = parseInt(document.getElementById('qrSize').value);
+  const ecc = document.getElementById('qrEcc').value;
+  const fg = document.getElementById('fgColor').value;
+  const bg = document.getElementById('bgColor').value;
+
+  // Use QRCode library to generate into a temp div, then copy to our canvas
+  const tmpDiv = document.createElement('div');
+  tmpDiv.style.display = 'none';
+  document.body.appendChild(tmpDiv);
+  try {
+    new QRCode(tmpDiv, {
+      text: text,
+      width: size,
+      height: size,
+      colorDark: fg,
+      colorLight: bg,
+      correctLevel: QRCode.CorrectLevel[ecc]
+    });
+    // QRCode renders into a canvas inside tmpDiv
+    setTimeout(() => {
+      const srcCanvas = tmpDiv.querySelector('canvas');
+      if (srcCanvas) {
+        const mainCanvas = document.getElementById('qrCanvas');
+        mainCanvas.width = size;
+        mainCanvas.height = size;
+        const ctx = mainCanvas.getContext('2d');
+        ctx.drawImage(srcCanvas, 0, 0, size, size);
+        mainCanvas.style.width = Math.min(size, 280) + 'px';
+        mainCanvas.style.height = Math.min(size, 280) + 'px';
+        document.getElementById('resultArea').style.display = 'block';
+        setStatus('QR code ready.', 'success');
+      }
+      document.body.removeChild(tmpDiv);
+    }, 100);
+  } catch(e) {
+    document.body.removeChild(tmpDiv);
+    setStatus('Error: content too long or invalid. Try shorter text.', 'error');
+  }
+}
+
+function downloadPNG() {
+  const canvas = document.getElementById('qrCanvas');
+  canvas.toBlob(blob => {
+    downloadBlob(blob, 'qrcode.png');
+  }, 'image/png');
+}
+
+async function copyToClipboard() {
+  const canvas = document.getElementById('qrCanvas');
+  canvas.toBlob(async blob => {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+      setStatus('Copied to clipboard!', 'success');
+    } catch(e) {
+      setStatus('Copy failed — please download instead', 'error');
+    }
+  }, 'image/png');
+}
+</script>
+</body></html>

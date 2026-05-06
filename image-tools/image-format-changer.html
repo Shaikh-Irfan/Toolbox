@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Format Changer — Toolbox</title>
+<link rel="stylesheet" href="../shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../image-tools.html">← Image & Design</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../image-tools.html">Image & Design</a><span>/</span><span>Image Format Changer</span></div>
+  <h1 class="page-title">Image Format Changer</h1>
+  <p class="page-desc">Convert your image between JPG, PNG, WEBP, BMP and GIF. Batch convert multiple images at once.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept="image/*" multiple>
+    <div class="drop-icon">🔄</div>
+    <div class="drop-title">Drop images here</div>
+    <div class="drop-sub">JPG, PNG, WEBP, BMP, GIF — multiple files supported</div>
+  </div>
+
+  <div class="multi-drop-list" id="fileList"></div>
+
+  <div id="controls" style="display:none">
+    <div class="options-row" style="margin-bottom:1rem;flex-wrap:wrap">
+      <div class="option-group">
+        <div class="option-label">Convert to</div>
+        <select class="option-select" id="outFmt" onchange="toggleQuality()">
+          <option value="image/jpeg">JPG</option>
+          <option value="image/png">PNG (lossless)</option>
+          <option value="image/webp">WEBP</option>
+          <option value="image/bmp">BMP</option>
+        </select>
+      </div>
+      <div class="option-group" id="qualityGroup">
+        <div class="option-label">Quality — <span id="qLabel">90%</span></div>
+        <div class="range-row" style="margin:0">
+          <input type="range" class="range-input" id="quality" min="10" max="100" value="90" oninput="document.getElementById('qLabel').textContent=this.value+'%'">
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="convertBtn" onclick="convertAll()">Convert All</button>
+      <button class="btn-secondary" onclick="clearAll()">Clear all</button>
+    </div>
+  </div>
+
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="status-msg" id="status"></div>
+
+  <div id="resultList" style="display:none;margin-top:1.5rem">
+    <div class="option-label" style="margin-bottom:0.75rem">Converted files — click to download</div>
+    <div class="multi-drop-list" id="resultItems"></div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-primary" id="dlAllBtn">⬇ Download All as ZIP</button>
+      <button class="btn-secondary" onclick="clearAll()">Convert more</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+let files=[], resultBlobs=[];
+
+function downloadBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),15000);}
+function loadImg(file){return new Promise((res,rej)=>{const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(url);res(img);};img.onerror=rej;img.src=url;});}
+function formatSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(2)+' MB';}
+function setStatus(msg,type){const s=document.getElementById('status');s.textContent=msg;s.className='status-msg'+(type?' '+type:'');}
+
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');addFiles([...e.dataTransfer.files]);});
+document.getElementById('fileInput').addEventListener('change',e=>{addFiles([...e.target.files]);e.target.value='';});
+
+function addFiles(newFiles){
+  newFiles.filter(f=>f.type.startsWith('image/')).forEach(f=>files.push(f));
+  renderFileList();
+}
+
+function renderFileList(){
+  const list=document.getElementById('fileList');
+  list.innerHTML='';
+  files.forEach((f,i)=>{
+    const div=document.createElement('div');
+    div.className='file-info';
+    div.innerHTML=`<div class="file-info-icon">🖼️</div>
+      <div class="file-info-text"><div class="file-info-name">${f.name}</div><div class="file-info-size">${formatSize(f.size)}</div></div>
+      <button class="file-remove" onclick="removeFile(${i})">✕</button>`;
+    list.appendChild(div);
+  });
+  document.getElementById('controls').style.display=files.length?'block':'none';
+  document.getElementById('resultList').style.display='none';
+}
+
+function removeFile(i){files.splice(i,1);renderFileList();}
+function clearAll(){files=[];resultBlobs=[];document.getElementById('fileList').innerHTML='';document.getElementById('controls').style.display='none';document.getElementById('resultList').style.display='none';setStatus('');}
+
+function toggleQuality(){
+  const fmt=document.getElementById('outFmt').value;
+  document.getElementById('qualityGroup').style.display=fmt==='image/png'||fmt==='image/bmp'?'none':'flex';
+}
+
+function getExt(fmt){return{['image/jpeg']:'jpg',['image/png']:'png',['image/webp']:'webp',['image/bmp']:'bmp'}[fmt]||'png';}
+
+async function convertAll(){
+  if(!files.length)return;
+  document.getElementById('convertBtn').disabled=true;
+  resultBlobs=[];
+  const prog=document.getElementById('prog');const fill=document.getElementById('progFill');
+  prog.classList.add('active');fill.style.width='0%';
+  const fmt=document.getElementById('outFmt').value;
+  const quality=parseInt(document.getElementById('quality').value)/100;
+  const ext=getExt(fmt);
+  const resultItems=document.getElementById('resultItems');
+  resultItems.innerHTML='';
+
+  for(let i=0;i<files.length;i++){
+    fill.style.width=((i/files.length)*90)+'%';
+    setStatus(`Converting ${i+1} of ${files.length}: ${files[i].name}`);
+    try{
+      const img=await loadImg(files[i]);
+      const canvas=document.createElement('canvas');
+      canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+      const ctx=canvas.getContext('2d');
+      if(fmt==='image/jpeg'){ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);}
+      ctx.drawImage(img,0,0);
+      const blob=await new Promise(res=>canvas.toBlob(res,fmt,fmt==='image/png'||fmt==='image/bmp'?undefined:quality));
+      const outName=files[i].name.replace(/\.[^.]+$/,'')+'.'+ext;
+      resultBlobs.push({blob,name:outName});
+      // Add to result list
+      const div=document.createElement('div');
+      div.className='file-info';
+      div.style.cursor='pointer';
+      div.innerHTML=`<div class="file-info-icon">✅</div>
+        <div class="file-info-text"><div class="file-info-name">${outName}</div><div class="file-info-size">${formatSize(blob.size)}</div></div>
+        <button class="btn-secondary" style="padding:0.4rem 0.8rem;font-size:0.72rem">⬇</button>`;
+      div.querySelector('button').onclick=(e)=>{e.stopPropagation();downloadBlob(blob,outName);};
+      resultItems.appendChild(div);
+    }catch(e){setStatus(`Failed on ${files[i].name}: ${e.message}`,'error');}
+  }
+
+  fill.style.width='100%';
+  setTimeout(()=>prog.classList.remove('active'),400);
+  document.getElementById('resultList').style.display='block';
+  document.getElementById('dlAllBtn').onclick=async()=>{
+    const zip=new JSZip();
+    resultBlobs.forEach(({blob,name})=>zip.file(name,blob));
+    const zipBlob=await zip.generateAsync({type:'blob'});
+    downloadBlob(zipBlob,'converted-images.zip');
+  };
+  setStatus(`Converted ${resultBlobs.length} image${resultBlobs.length>1?'s':''}!`,'success');
+  document.getElementById('convertBtn').disabled=false;
+}
+</script>
+</body></html>
