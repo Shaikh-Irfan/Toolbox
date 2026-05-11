@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word to PDF — Toolbox</title>
+<link rel="stylesheet" href="./shared.css">
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">Toolbox.</a>
+  <ul class="nav-links">
+    <li><a href="../file-converter.html">← File Converter</a></li>
+    <li><a href="../index.html">Home</a></li>
+  </ul>
+</nav>
+<div class="page-header">
+  <div class="breadcrumb"><a href="../index.html">Home</a><span>/</span><a href="../file-converter.html">File Converter</a><span>/</span><span>Word to PDF</span></div>
+  <h1 class="page-title">Word to PDF</h1>
+  <p class="page-desc">Convert Word documents to professional PDF files with perfect formatting. 100% client-side processing.</p>
+</div>
+<div class="tool-workspace">
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fileInput" accept=".docx">
+    <div class="drop-icon">📄</div>
+    <div class="drop-title">Drop your Word file here</div>
+    <div class="drop-sub">or click to browse — .docx supported</div>
+  </div>
+  <div id="fileInfo" class="file-info" style="display:none">
+    <div class="file-info-icon">📄</div>
+    <div class="file-info-text">
+      <div class="file-info-name" id="fname"></div>
+      <div class="file-info-size" id="fsize"></div>
+    </div>
+    <button class="file-remove" onclick="resetFile()">✕</button>
+  </div>
+  <div class="progress-bar" id="prog"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="btn-row">
+    <button class="btn-primary" id="convertBtn" onclick="convert()" disabled>📄 Convert to PDF</button>
+  </div>
+  <div class="status-msg" id="status"></div>
+  <div class="result-box" id="result">
+    <div class="result-label">Conversion complete</div>
+    <div class="result-stat" id="resultName"></div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn-primary" id="dlBtn">⬇ Download PDF</button>
+      <button class="btn-secondary" onclick="resetFile()">Convert another</button>
+    </div>
+  </div>
+</div>
+<footer><span class="footer-logo">Toolbox.</span><span class="footer-note">Free tools. Always.</span></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+const { jsPDF } = window.jspdf;
+let currentFile = null;
+
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(f) {
+  if (!f) return;
+  if (!f.name.match(/\.docx$/i)) { setStatus('Please upload a .docx file', 'error'); return; }
+  currentFile = f;
+  document.getElementById('fname').textContent = f.name;
+  document.getElementById('fsize').textContent = formatSize(f.size);
+  document.getElementById('fileInfo').style.display = 'flex';
+  dz.style.display = 'none';
+  document.getElementById('convertBtn').disabled = false;
+  setStatus('');
+}
+
+function resetFile() {
+  currentFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileInfo').style.display = 'none';
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('prog').classList.remove('active');
+  dz.style.display = 'block';
+  document.getElementById('convertBtn').disabled = true;
+  setStatus('');
+}
+
+function formatSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+function setStatus(msg, type) {
+  const s = document.getElementById('status');
+  s.textContent = msg; s.className = 'status-msg' + (type ? ' ' + type : '');
+}
+
+async function convert() {
+  if (!currentFile) return;
+  const btn = document.getElementById('convertBtn');
+  btn.disabled = true;
+  setStatus('Reading Word document...');
+  const prog = document.getElementById('prog');
+  const fill = document.getElementById('progFill');
+  prog.classList.add('active');
+  fill.style.width = '15%';
+
+  try {
+    // Read the .docx file
+    const ab = await currentFile.arrayBuffer();
+    fill.style.width = '35%';
+    setStatus('Extracting content...');
+
+    // Convert to HTML using mammoth
+    const result = await mammoth.convertToHtml({ 
+      arrayBuffer: ab,
+      styleMap: [
+        "p[style-name='Heading 1'] => h1:fresh",
+        "p[style-name='Heading 2'] => h2:fresh",
+        "p[style-name='Heading 3'] => h3:fresh",
+        "p[style-name='Title'] => h1.title:fresh",
+        "r[style-name='Strong'] => strong",
+        "r[style-name='Emphasis'] => em"
+      ]
+    });
+
+    fill.style.width = '60%';
+    setStatus('Building PDF...');
+
+    // Create a temporary container to render HTML
+    const container = document.createElement('div');
+    container.style.cssText = `
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      width: 210mm;
+      padding: 20mm 25mm;
+      font-family: 'Times New Roman', Georgia, serif;
+      font-size: 12pt;
+      line-height: 1.5;
+      color: #000;
+      background: #fff;
+    `;
+    container.innerHTML = `
+      <style>
+        h1 { font-size: 24pt; font-weight: bold; margin: 18pt 0 12pt; line-height: 1.2; }
+        h2 { font-size: 18pt; font-weight: bold; margin: 14pt 0 10pt; line-height: 1.2; }
+        h3 { font-size: 14pt; font-weight: bold; margin: 12pt 0 8pt; line-height: 1.2; }
+        p { margin: 0 0 10pt; text-align: justify; }
+        strong { font-weight: bold; }
+        em { font-style: italic; }
+        ul, ol { margin: 10pt 0; padding-left: 30pt; }
+        li { margin-bottom: 6pt; }
+        table { width: 100%; border-collapse: collapse; margin: 12pt 0; }
+        td, th { border: 1px solid #000; padding: 6pt; text-align: left; }
+        th { font-weight: bold; background: #f0f0f0; }
+        img { max-width: 100%; height: auto; }
+      </style>
+      ${result.value}
+    `;
+    document.body.appendChild(container);
+
+    fill.style.width = '80%';
+    setStatus('Rendering pages...');
+
+    // Render HTML to canvas using html2canvas
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    });
+
+    document.body.removeChild(container);
+
+    fill.style.width = '90%';
+    setStatus('Finalizing PDF...');
+
+    // Create PDF from canvas
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = 210; // A4 width in mm
+    const pageHeight = 297; // A4 height in mm
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    // Add first page
+    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    // Add additional pages if content is longer than one page
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    fill.style.width = '100%';
+
+    // Save the PDF
+    const pdfBlob = pdf.output('blob');
+    const pdfName = currentFile.name.replace(/\.docx$/i, '.pdf');
+
+    document.getElementById('resultName').textContent = pdfName;
+    document.getElementById('resultSub').textContent = `PDF ready • ${formatSize(pdfBlob.size)} • ${pdf.getNumberOfPages()} page(s)`;
+    
+    document.getElementById('dlBtn').onclick = () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(pdfBlob);
+      a.download = pdfName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+
+    document.getElementById('result').classList.add('show');
+    setTimeout(() => prog.classList.remove('active'), 400);
+    setStatus('Conversion complete!', 'success');
+
+  } catch(e) {
+    setStatus('Conversion failed: ' + e.message, 'error');
+    prog.classList.remove('active');
+    console.error(e);
+  }
+  btn.disabled = false;
+}
+</script>
+</body></html>
